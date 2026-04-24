@@ -1,0 +1,359 @@
+{
+  "profile": {
+    "userName": "Surya",
+    "createdAt": 1776619788305
+  },
+  "preferences": {
+    "haptics": true,
+    "flashAlerts": true,
+    "textSize": "regular",
+    "autoTranscribe": true,
+    "allowCloudOffload": true,
+    "retentionDays": 7,
+    "isListening": false,
+    "nightMode": false
+  },
+  "actions": [
+    {
+      "type": "reminder",
+      "title": "Set the dishes",
+      "detail": "Remember to set the dishes at 5 o'clock tomorrow.",
+      "when": "2026-04-20T17:00:00Z",
+      "sourceQuote": "Set the dishes at 5 o'clock tomorrow.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1776623883983,
+      "done": false,
+      "id": "a_mo63zmbz_kp0n"
+    },
+    {
+      "type": "reminder",
+      "title": "Set the dishes",
+      "detail": "Remember to set the dishes at 5 o'clock tomorrow.",
+      "when": "2026-04-20T17:00:00Z",
+      "sourceQuote": "Set the dishes at 5 o'clock tomorrow.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1776623883978,
+      "done": false,
+      "id": "a_mo63zmbu_wlv"
+    },
+    {
+      "type": "reminder",
+      "title": "Set the dishes",
+      "detail": "Remember to set the dishes at 5 o'clock tomorrow.",
+      "when": "2026-04-20T17:00:00Z",
+      "sourceQuote": "Set the dishes at 5 o'clock tomorrow.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1776623869857,
+      "done": false,
+      "id": "a_mo63zbfl_itom"
+    },
+    {
+      "type": "reminder",
+      "title": "Set the dishes",
+      "detail": "Remember to set the dishes at 5 o'clock tomorrow.",
+      "when": "2026-04-20T17:00:00Z",
+      "sourceQuote": "Set the dishes at 5 o'clock tomorrow.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1776623869850,
+      "done": false,
+      "id": "a_mo63zbfe_3say"
+    },
+    {
+      "type": "reminder",
+      "title": "Set the bed",
+      "detail": "Reminder to set the bed.",
+      "when": "2026-04-19T17:00:00Z",
+      "sourceQuote": "Make sure to set the bed at 5 o'clock.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1776622789171,
+      "done": false,
+      "id": "a_mo63c5kj_cu0i"
+    },
+    {
+      "type": "reminder",
+      "title": "Do the dishes",
+      "detail": "Reminder to do the dishes.",
+      "when": "2026-04-19T15:00:00Z",
+      "sourceQuote": "Make sure to do the dishes at 3 o'clock.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1776622789156,
+      "done": false,
+      "id": "a_mo63c5k4_ff30"
+    },
+    {
+      "type": "reminder",
+      "title": "Set the bed",
+      "detail": "Reminder to set the bed.",
+      "when": "2026-04-19T17:00:00Z",
+      "sourceQuote": "Make sure to set the bed at 5 o'clock.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1776622789150,
+      "done": false,
+      "id": "a_mo63c5jy_8xyw"
+    },
+    {
+      "type": "reminder",
+      "title": "Do the dishes",
+      "detail": "Reminder to do the dishes.",
+      "when": "2026-04-19T15:00:00Z",
+      "sourceQuote": "Make sure to do the dishes at 3 o'clock.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1776622789150,
+      "done": false,
+      "id": "a_mo63c5jy_gbz2"
+    },
+    {
+      "id": "a1",
+      "type": "calendar",
+      "title": "Dentist — Thursday 3:00 PM",
+      "detail": "Overheard: \"Hey Sarah, don't forget your dentist appointment Thursday at 3.\"",
+      "when": null,
+      "sourceQuote": "Hey Sarah, don't forget your dentist appointment Thursday at 3.",
+      "priority": "medium",
+      "confidence": 0.92,
+      "createdAt": 1776608988305,
+      "done": false
+    },
+    {
+      "id": "a2",
+      "type": "shopping",
+      "title": "Milk on the way home",
+      "detail": "Commitment overheard in the kitchen this morning.",
+      "when": null,
+      "sourceQuote": "I'll pick up milk on the way home.",
+      "priority": "low",
+      "confidence": 0.78,
+      "createdAt": 1776598188305,
+      "done": false
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "label": "doorbell",
+      "display": "Doorbell",
+      "tier": "medium",
+      "icon": "bell",
+      "confidence": 0.94,
+      "timestamp": 1776619548305,
+      "room": "Front door",
+      "direction": "N"
+    },
+    {
+      "id": "e2",
+      "label": "microwave_beep",
+      "display": "Microwave timer",
+      "tier": "low",
+      "icon": "microwave",
+      "confidence": 0.88,
+      "timestamp": 1776618948305,
+      "room": "Kitchen",
+      "direction": "E"
+    },
+    {
+      "id": "e3",
+      "label": "name_called",
+      "display": "Your name called",
+      "tier": "high",
+      "icon": "user",
+      "confidence": 0.81,
+      "timestamp": 1776617568305,
+      "room": "Living room",
+      "direction": "W"
+    }
+  ],
+  "contacts": [
+    {
+      "id": "c1",
+      "name": "Mom",
+      "phone": "+15550101001",
+      "relation": "Family"
+    },
+    {
+      "id": "c2",
+      "name": "Alex",
+      "phone": "+15550101002",
+      "relation": "Partner"
+    },
+    {
+      "id": "c3",
+      "name": "Dr. Lin",
+      "phone": "+15550101003",
+      "relation": "Doctor"
+    }
+  ],
+  "medications": [
+    {
+      "id": "m1",
+      "name": "Lisinopril 10 mg",
+      "schedule": "Every morning with water",
+      "nextDose": 1776670188305,
+      "prescribedBy": "Dr. Lin",
+      "active": true
+    },
+    {
+      "id": "m2",
+      "name": "Vitamin D3 2000 IU",
+      "schedule": "Daily with lunch",
+      "nextDose": 1776684588305,
+      "prescribedBy": null,
+      "active": true
+    }
+  ],
+  "transcripts": [
+    {
+      "title": "ASL bridge capture",
+      "text": "Hello, how are you?",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0,
+          "end": 3.7200000286102295,
+          "text": "Hello, how are you?",
+          "speaker": "Speaker 1",
+          "emotion": "curious"
+        }
+      ],
+      "language": "english",
+      "duration": 5.099999904632568,
+      "kind": "asl_bridge",
+      "createdAt": 1776622923093,
+      "id": "t_mo63f0wl_fomt"
+    },
+    {
+      "title": "ASL bridge capture",
+      "text": "Hello. Hello. Hello. Hello.",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0,
+          "end": 2,
+          "text": "Hello.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 1,
+          "start": 2,
+          "end": 4,
+          "text": "Hello.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 2,
+          "start": 4,
+          "end": 6,
+          "text": "Hello.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 3,
+          "start": 6,
+          "end": 8,
+          "text": "Hello.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        }
+      ],
+      "language": "english",
+      "duration": 8.699999809265137,
+      "kind": "asl_bridge",
+      "createdAt": 1776622910417,
+      "id": "t_mo63er4h_e14m"
+    },
+    {
+      "title": "Conversation 1:19:15 PM",
+      "text": "Hello? Hello? Can you hear me? Make sure to do the dishes at 3 o'clock. Make sure to set the bed at 5 o'clock. Hello? Can you hear me? Can you make sure to do the bed? Make sure to set the bed at 5 o'clock.",
+      "segments": [
+        {
+          "id": 0,
+          "start": 1,
+          "end": 2,
+          "text": "Hello?",
+          "speaker": "Speaker 1",
+          "emotion": "curious"
+        },
+        {
+          "id": 1,
+          "start": 4,
+          "end": 5,
+          "text": "Hello?",
+          "speaker": "Speaker 2",
+          "emotion": "curious"
+        },
+        {
+          "id": 2,
+          "start": 12,
+          "end": 13,
+          "text": "Can you hear me?",
+          "speaker": "Speaker 1",
+          "emotion": "curious"
+        },
+        {
+          "id": 3,
+          "start": 18,
+          "end": 21,
+          "text": "Make sure to do the dishes at 3 o'clock.",
+          "speaker": "Speaker 2",
+          "emotion": "neutral"
+        },
+        {
+          "id": 4,
+          "start": 30,
+          "end": 48,
+          "text": "Make sure to set the bed at 5 o'clock.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 5,
+          "start": 60,
+          "end": 61,
+          "text": "Hello?",
+          "speaker": "Speaker 2",
+          "emotion": "curious"
+        },
+        {
+          "id": 6,
+          "start": 66,
+          "end": 67,
+          "text": "Can you hear me?",
+          "speaker": "Speaker 1",
+          "emotion": "curious"
+        },
+        {
+          "id": 7,
+          "start": 81,
+          "end": 83,
+          "text": "Can you make sure to do the bed?",
+          "speaker": "Speaker 2",
+          "emotion": "curious"
+        },
+        {
+          "id": 8,
+          "start": 90,
+          "end": 96,
+          "text": "Make sure to set the bed at 5 o'clock.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        }
+      ],
+      "language": "english",
+      "duration": 95.81999969482422,
+      "kind": "conversation",
+      "createdAt": 1776622758111,
+      "id": "t_mo63bhlr_h793"
+    }
+  ],
+  "meetings": []
+}

@@ -1,0 +1,20 @@
+{
+  "name": "agent-echo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agent ECHO — an autonomous AI companion that serves as the ears, voice, and executive assistant for deaf and hard-of-hearing individuals.",
+  "workspaces": [
+    "mobile",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,mobile -c blue,magenta \"npm run dev -w backend\" \"npm run start -w mobile\"",
+    "dev:backend": "npm run dev -w backend",
+    "dev:mobile": "npm run start -w mobile",
+    "install:all": "npm install",
+    "lint": "npm run lint -w backend && npm run lint -w mobile"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

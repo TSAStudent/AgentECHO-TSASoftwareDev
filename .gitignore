@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Builds
+dist/
+build/
+.expo/
+.expo-shared/
+web-build/
+*.tsbuildinfo
+
+# Native
+ios/
+android/
+!mobile/android/
+!mobile/ios/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Coverage / test
+coverage/
+.nyc_output/
+
+# Metro
+.metro-health-check*
+
+# Local dev db / cache
+*.db
+*.sqlite
+.cache/
+.turbo/
