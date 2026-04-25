@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Agent ECHO",
+    "slug": "agent-echo",
+    "scheme": "agentecho",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#07080F",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ai.agentecho.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Agent ECHO listens ambiently to detect critical sounds, transcribe conversations, and alert you to what you may have missed.",
+        "NSCameraUsageDescription": "Agent ECHO uses the camera for two-way ASL translation and to identify who is speaking in group settings.",
+        "NSSpeechRecognitionUsageDescription": "Agent ECHO transcribes ambient audio so you can review what was said.",
+        "NSLocationWhenInUseUsageDescription": "Agent ECHO uses your location to share it with your Trusted Circle during an emergency.",
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "android": {
+      "package": "ai.agentecho.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#07080F"
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-av",
+      "expo-camera",
+      "expo-location",
+      "expo-notifications"
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:4000"
+    }
+  }
+}
