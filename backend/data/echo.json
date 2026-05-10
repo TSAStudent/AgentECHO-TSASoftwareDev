@@ -16,6 +16,30 @@
   "actions": [
     {
       "type": "reminder",
+      "title": "Take out the trash",
+      "detail": "Remember to take out the trash at the end of the day.",
+      "when": "2026-04-25T23:59:59.999Z",
+      "sourceQuote": "Make sure to take out the trash at the end of the day.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1777143412599,
+      "done": false,
+      "id": "a_moepax6f_kswo"
+    },
+    {
+      "type": "reminder",
+      "title": "Take out the trash",
+      "detail": "Remember to take out the trash at the end of the day.",
+      "when": "2026-04-25T23:59:59.999Z",
+      "sourceQuote": "Make sure to take out the trash at the end of the day.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1777143412593,
+      "done": false,
+      "id": "a_moepax69_j4tg"
+    },
+    {
+      "type": "reminder",
       "title": "Set the dishes",
       "detail": "Remember to set the dishes at 5 o'clock tomorrow.",
       "when": "2026-04-20T17:00:00Z",
@@ -135,41 +159,7 @@
       "done": false
     }
   ],
-  "events": [
-    {
-      "id": "e1",
-      "label": "doorbell",
-      "display": "Doorbell",
-      "tier": "medium",
-      "icon": "bell",
-      "confidence": 0.94,
-      "timestamp": 1776619548305,
-      "room": "Front door",
-      "direction": "N"
-    },
-    {
-      "id": "e2",
-      "label": "microwave_beep",
-      "display": "Microwave timer",
-      "tier": "low",
-      "icon": "microwave",
-      "confidence": 0.88,
-      "timestamp": 1776618948305,
-      "room": "Kitchen",
-      "direction": "E"
-    },
-    {
-      "id": "e3",
-      "label": "name_called",
-      "display": "Your name called",
-      "tier": "high",
-      "icon": "user",
-      "confidence": 0.81,
-      "timestamp": 1776617568305,
-      "room": "Living room",
-      "direction": "W"
-    }
-  ],
+  "events": [],
   "contacts": [
     {
       "id": "c1",
@@ -208,152 +198,6 @@
       "active": true
     }
   ],
-  "transcripts": [
-    {
-      "title": "ASL bridge capture",
-      "text": "Hello, how are you?",
-      "segments": [
-        {
-          "id": 0,
-          "start": 0,
-          "end": 3.7200000286102295,
-          "text": "Hello, how are you?",
-          "speaker": "Speaker 1",
-          "emotion": "curious"
-        }
-      ],
-      "language": "english",
-      "duration": 5.099999904632568,
-      "kind": "asl_bridge",
-      "createdAt": 1776622923093,
-      "id": "t_mo63f0wl_fomt"
-    },
-    {
-      "title": "ASL bridge capture",
-      "text": "Hello. Hello. Hello. Hello.",
-      "segments": [
-        {
-          "id": 0,
-          "start": 0,
-          "end": 2,
-          "text": "Hello.",
-          "speaker": "Speaker 1",
-          "emotion": "neutral"
-        },
-        {
-          "id": 1,
-          "start": 2,
-          "end": 4,
-          "text": "Hello.",
-          "speaker": "Speaker 1",
-          "emotion": "neutral"
-        },
-        {
-          "id": 2,
-          "start": 4,
-          "end": 6,
-          "text": "Hello.",
-          "speaker": "Speaker 1",
-          "emotion": "neutral"
-        },
-        {
-          "id": 3,
-          "start": 6,
-          "end": 8,
-          "text": "Hello.",
-          "speaker": "Speaker 1",
-          "emotion": "neutral"
-        }
-      ],
-      "language": "english",
-      "duration": 8.699999809265137,
-      "kind": "asl_bridge",
-      "createdAt": 1776622910417,
-      "id": "t_mo63er4h_e14m"
-    },
-    {
-      "title": "Conversation 1:19:15 PM",
-      "text": "Hello? Hello? Can you hear me? Make sure to do the dishes at 3 o'clock. Make sure to set the bed at 5 o'clock. Hello? Can you hear me? Can you make sure to do the bed? Make sure to set the bed at 5 o'clock.",
-      "segments": [
-        {
-          "id": 0,
-          "start": 1,
-          "end": 2,
-          "text": "Hello?",
-          "speaker": "Speaker 1",
-          "emotion": "curious"
-        },
-        {
-          "id": 1,
-          "start": 4,
-          "end": 5,
-          "text": "Hello?",
-          "speaker": "Speaker 2",
-          "emotion": "curious"
-        },
-        {
-          "id": 2,
-          "start": 12,
-          "end": 13,
-          "text": "Can you hear me?",
-          "speaker": "Speaker 1",
-          "emotion": "curious"
-        },
-        {
-          "id": 3,
-          "start": 18,
-          "end": 21,
-          "text": "Make sure to do the dishes at 3 o'clock.",
-          "speaker": "Speaker 2",
-          "emotion": "neutral"
-        },
-        {
-          "id": 4,
-          "start": 30,
-          "end": 48,
-          "text": "Make sure to set the bed at 5 o'clock.",
-          "speaker": "Speaker 1",
-          "emotion": "neutral"
-        },
-        {
-          "id": 5,
-          "start": 60,
-          "end": 61,
-          "text": "Hello?",
-          "speaker": "Speaker 2",
-          "emotion": "curious"
-        },
-        {
-          "id": 6,
-          "start": 66,
-          "end": 67,
-          "text": "Can you hear me?",
-          "speaker": "Speaker 1",
-          "emotion": "curious"
-        },
-        {
-          "id": 7,
-          "start": 81,
-          "end": 83,
-          "text": "Can you make sure to do the bed?",
-          "speaker": "Speaker 2",
-          "emotion": "curious"
-        },
-        {
-          "id": 8,
-          "start": 90,
-          "end": 96,
-          "text": "Make sure to set the bed at 5 o'clock.",
-          "speaker": "Speaker 1",
-          "emotion": "neutral"
-        }
-      ],
-      "language": "english",
-      "duration": 95.81999969482422,
-      "kind": "conversation",
-      "createdAt": 1776622758111,
-      "id": "t_mo63bhlr_h793"
-    }
-  ],
+  "transcripts": [],
   "meetings": []
 }
