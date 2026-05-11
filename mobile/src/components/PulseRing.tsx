@@ -21,8 +21,22 @@ type Props = {
 export const PulseRing: React.FC<Props> = ({
   size = 180, color, active = true, style, rings = 3, children,
 }) => {
+  // Clip scaled rings so animated borders cannot paint at odd screen positions
+  // when multiple PulseRings stay mounted (e.g. tab navigator).
   return (
-    <View style={[{ width: size, height: size, alignItems: "center", justifyContent: "center" }, style]}>
+    <View
+      style={[
+        {
+          width: size,
+          height: size,
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          borderRadius: size / 2,
+        },
+        style,
+      ]}
+    >
       {Array.from({ length: rings }).map((_, i) => (
         <Ring key={i} size={size} color={color} active={active} delay={i * 700} />
       ))}

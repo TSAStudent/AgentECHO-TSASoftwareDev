@@ -15,28 +15,316 @@
   },
   "actions": [
     {
-      "type": "reminder",
-      "title": "Take out the trash",
-      "detail": "Remember to take out the trash at the end of the day.",
-      "when": "2026-04-25T23:59:59.999Z",
-      "sourceQuote": "Make sure to take out the trash at the end of the day.",
+      "type": "calendar",
+      "title": "Follow-up Checkup",
+      "detail": "Return for a checkup to see how magnesium intake has improved.",
+      "when": "2026-11-11T09:00:00Z",
+      "sourceQuote": "after 6 months we'll come back to your checkup and see how you've been doing",
       "priority": "medium",
       "confidence": 1,
-      "createdAt": 1777143412599,
+      "createdAt": 1778466367704,
       "done": false,
-      "id": "a_moepax6f_kswo"
+      "id": "a_mp0kyfvc_2pkq"
+    },
+    {
+      "type": "medication",
+      "title": "Magnesium 200 mg",
+      "detail": "Take 200mg magnesium supplements every morning, every day.",
+      "when": "2026-05-12T09:00:00Z",
+      "sourceQuote": "you're a little low on magnesium, so I'm going to recommend that you take 200mg magnesium supplements every morning, every day",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778466367704,
+      "done": false,
+      "id": "a_mp0kyfvc_g8pb"
+    },
+    {
+      "type": "calendar",
+      "title": "Yearly checkup",
+      "detail": "Next yearly checkup to see how the magnesium supplements have been going.",
+      "when": "2027-05-11T09:00:00Z",
+      "sourceQuote": "And I'll see you next on your yearly checkup to see how it's been going, okay?",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778466090564,
+      "done": false,
+      "id": "a_mp0ksi10_877t"
+    },
+    {
+      "type": "medication",
+      "title": "Take magnesium supplements",
+      "detail": "Take 400 grams of magnesium supplements each morning for the next year.",
+      "when": null,
+      "sourceQuote": "Okay, Surya, it seems that you're pretty on magnesium. How about this? Take magnesium supplements, 400 grams, each morning, every day, for the next year.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778466090564,
+      "done": false,
+      "id": "a_mp0ksi10_eoja"
+    },
+    {
+      "type": "calendar",
+      "title": "Chemistry Exam",
+      "detail": "You have a chemistry exam scheduled.",
+      "when": "2026-05-14T09:00:00Z",
+      "sourceQuote": "Syria, you have a chemistry exam on May 14th.",
+      "priority": "high",
+      "confidence": 1,
+      "createdAt": 1778463892021,
+      "done": false,
+      "id": "a_mp0jhdmd_boyc"
+    },
+    {
+      "type": "calendar",
+      "title": "Basketball Tournament",
+      "detail": "Attend the basketball tournament.",
+      "when": "2026-05-11T09:00:00Z",
+      "sourceQuote": "you're going to have a basketball tournament. Basketball tournament on May 11th, a Monday.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778463699541,
+      "done": false,
+      "id": "a_mp0jd93p_2hwx"
+    },
+    {
+      "type": "reminder",
+      "title": "Basketball tournament enrollment",
+      "detail": "You have been enrolled for a basketball tournament on YouTube.",
+      "when": null,
+      "sourceQuote": "I enrolled you for a basketball tournament on YouTube.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778463665457,
+      "done": false,
+      "id": "a_mp0jcisx_jgnz"
+    },
+    {
+      "type": "calendar",
+      "title": "Tennis Tournament",
+      "detail": "You have a tennis tournament scheduled.",
+      "when": "2026-05-14T09:00:00Z",
+      "sourceQuote": "On May 14th, you have a On May 14th, he had a tennis tournament.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778463518501,
+      "done": false,
+      "id": "a_mp0j9deu_2enn"
+    },
+    {
+      "type": "reminder",
+      "title": "Prepare for algebra exam",
+      "detail": "You have an algebra exam on May 13th.",
+      "when": "2026-05-13T09:00:00Z",
+      "sourceQuote": "May 13th, you have an algebra exam.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778463366853,
+      "done": false,
+      "id": "a_mp0j64ed_j4up"
+    },
+    {
+      "type": "reminder",
+      "title": "Prepare for algebra exam",
+      "detail": "You have an algebra exam on May 12th.",
+      "when": "2026-05-12T09:00:00Z",
+      "sourceQuote": "You have an algebra exam on May 12th.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778463366853,
+      "done": false,
+      "id": "a_mp0j64ed_9imj"
+    },
+    {
+      "type": "reminder",
+      "title": "Exam Reminder",
+      "detail": "Remember you have an hour for your exam.",
+      "when": "2026-05-10T09:00:00Z",
+      "sourceQuote": "Surya, remember, you have an hour. exam on May 10th.",
+      "priority": "high",
+      "confidence": 1,
+      "createdAt": 1778463366049,
+      "done": false,
+      "id": "a_mp0j63s1_e95t"
+    },
+    {
+      "type": "reminder",
+      "title": "Algebra Exam Preparation",
+      "detail": "Prepare for your algebra exam on May 12th.",
+      "when": "2026-05-12T09:00:00Z",
+      "sourceQuote": "You have an algebra exam on May 12th.",
+      "priority": "high",
+      "confidence": 1,
+      "createdAt": 1778463366049,
+      "done": false,
+      "id": "a_mp0j63s1_1lup"
+    },
+    {
+      "type": "reminder",
+      "title": "Algebra Exam",
+      "detail": "Reminder for algebra exam on May 13th.",
+      "when": "2026-05-13T09:00:00Z",
+      "sourceQuote": "you have an algebra exam on May 13th.",
+      "priority": "high",
+      "confidence": 1,
+      "createdAt": 1778463364339,
+      "done": false,
+      "id": "a_mp0j62gj_aiuw"
+    },
+    {
+      "type": "reminder",
+      "title": "Algebra Exam",
+      "detail": "Reminder for algebra exam on May 12th.",
+      "when": "2026-05-12T09:00:00Z",
+      "sourceQuote": "you have an algebra exam on May 12th.",
+      "priority": "high",
+      "confidence": 1,
+      "createdAt": 1778463364339,
+      "done": false,
+      "id": "a_mp0j62gj_kc4d"
+    },
+    {
+      "type": "reminder",
+      "title": "Reminder for Surya",
+      "detail": "Surya, remember, you have an hour.",
+      "when": "2026-05-11T02:35:00Z",
+      "sourceQuote": "Surya, remember, you have an hour.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778463355545,
+      "done": true,
+      "id": "a_mp0j5vo9_inad"
+    },
+    {
+      "type": "calendar",
+      "title": "Basketball Game",
+      "detail": "Surya has a basketball game.",
+      "when": "2026-05-16T09:00:00Z",
+      "sourceQuote": "you have a basketball game.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778463325831,
+      "done": false,
+      "id": "a_mp0j58qv_kmun"
+    },
+    {
+      "type": "calendar",
+      "title": "Basketball Tournament",
+      "detail": "You have a basketball tournament scheduled.",
+      "when": "2026-05-16T09:00:00Z",
+      "sourceQuote": "You have a basketball tournament.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778463315314,
+      "done": false,
+      "id": "a_mp0j50mq_iull"
     },
     {
       "type": "reminder",
       "title": "Take out the trash",
-      "detail": "Remember to take out the trash at the end of the day.",
-      "when": "2026-04-25T23:59:59.999Z",
-      "sourceQuote": "Make sure to take out the trash at the end of the day.",
+      "detail": "Reminder to take out the trash.",
+      "when": "2026-05-15T09:00:00Z",
+      "sourceQuote": "Take out the trash on May 15th.",
       "priority": "medium",
       "confidence": 1,
-      "createdAt": 1777143412593,
+      "createdAt": 1778463195763,
       "done": false,
-      "id": "a_moepax69_j4tg"
+      "id": "a_mp0j2gdv_f476"
+    },
+    {
+      "type": "reminder",
+      "title": "Take out the trash",
+      "detail": "Surya needs to take out the trash on the floor.",
+      "when": null,
+      "sourceQuote": "Suriya, take out the trash on the floor.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778463192819,
+      "done": true,
+      "id": "a_mp0j2e43_bs7h"
+    },
+    {
+      "type": "reminder",
+      "title": "Take out the trash",
+      "detail": "Reminder to take out the trash on May 15th.",
+      "when": "2026-05-15T09:00:00Z",
+      "sourceQuote": "Take out the trash.",
+      "priority": "medium",
+      "confidence": 0.9,
+      "createdAt": 1778463186010,
+      "done": true,
+      "id": "a_mp0j28uy_get7"
+    },
+    {
+      "type": "reminder",
+      "title": "Take out the trash",
+      "detail": "Remind Surya to take out the trash.",
+      "when": "2026-05-15T09:00:00Z",
+      "sourceQuote": "Take out the trash.",
+      "priority": "medium",
+      "confidence": 0.9,
+      "createdAt": 1778463177908,
+      "done": false,
+      "id": "a_mp0j22lw_hpza"
+    },
+    {
+      "type": "calendar",
+      "title": "Add event to calendar",
+      "detail": "Don't forget to add the event on May 15th to your calendar.",
+      "when": "2026-05-15T09:00:00Z",
+      "sourceQuote": "on May 15th. Don't forget to add it to your calendar.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778461625273,
+      "done": false,
+      "id": "a_mp0i4sl5_2ayu"
+    },
+    {
+      "type": "reminder",
+      "title": "Basketball Tournament",
+      "detail": "Surya has a basketball tournament to remember.",
+      "when": "2026-05-12T09:00:00Z",
+      "sourceQuote": "Syria, remember that you have a basketball tournament.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778461605737,
+      "done": true,
+      "id": "a_mp0i4dih_69k8"
+    },
+    {
+      "type": "calendar",
+      "title": "Algebra Exam",
+      "detail": "Surya has an algebra exam scheduled.",
+      "when": "2026-05-13T09:00:00Z",
+      "sourceQuote": "Surya, you have an algebra exam on the 13th, May 13th.",
+      "priority": "high",
+      "confidence": 1,
+      "createdAt": 1778461556681,
+      "done": false,
+      "id": "a_mp0i3bnt_b8uy"
+    },
+    {
+      "type": "calendar",
+      "title": "Tennis Tournament",
+      "detail": "You have a tennis tournament scheduled.",
+      "when": "2026-05-11T09:00:00Z",
+      "sourceQuote": "Syria, you have a tennis tournament tomorrow on Monday, May 11th.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778461336074,
+      "done": true,
+      "id": "a_mp0hylfu_kdm8"
+    },
+    {
+      "type": "calendar",
+      "title": "Tennis Tournament",
+      "detail": "You have a tennis tournament scheduled.",
+      "when": "2026-05-11T09:00:00Z",
+      "sourceQuote": "Syria, you have a tennis tournament tomorrow on Monday, May 11th.",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778461336060,
+      "done": true,
+      "id": "a_mp0hylfg_leku"
     },
     {
       "type": "reminder",
@@ -159,25 +447,68 @@
       "done": false
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "label": "scream",
+      "display": "Scream / help",
+      "tier": "emergency",
+      "icon": "megaphone",
+      "confidence": 0.9,
+      "timestamp": 1778465906676,
+      "room": null,
+      "direction": "NE",
+      "acknowledged": false,
+      "id": "e_mp0kok50_g40d"
+    },
+    {
+      "label": "scream",
+      "display": "Scream / help",
+      "tier": "emergency",
+      "icon": "megaphone",
+      "confidence": 0.9,
+      "timestamp": 1778465634074,
+      "room": null,
+      "direction": "NW",
+      "acknowledged": false,
+      "id": "e_mp0kipsq_e81c"
+    },
+    {
+      "label": "name_called",
+      "display": "Your name called",
+      "tier": "high",
+      "icon": "user",
+      "confidence": 0.95,
+      "timestamp": 1778461551946,
+      "room": null,
+      "direction": "S",
+      "acknowledged": false,
+      "id": "e_mp0i380a_7492"
+    },
+    {
+      "label": "name_called",
+      "display": "Your name called",
+      "tier": "high",
+      "icon": "user",
+      "confidence": 0.95,
+      "timestamp": 1778461154404,
+      "room": null,
+      "direction": "SE",
+      "acknowledged": false,
+      "id": "e_mp0hup9h_d4kx"
+    }
+  ],
   "contacts": [
     {
-      "id": "c1",
-      "name": "Mom",
-      "phone": "+15550101001",
-      "relation": "Family"
+      "name": "Darshan",
+      "phone": "+19727994835",
+      "relation": null,
+      "id": "c_mp0kqvo5_eglp"
     },
     {
-      "id": "c2",
-      "name": "Alex",
-      "phone": "+15550101002",
-      "relation": "Partner"
-    },
-    {
-      "id": "c3",
-      "name": "Dr. Lin",
-      "phone": "+15550101003",
-      "relation": "Doctor"
+      "name": "Big Su",
+      "phone": "+16767676767",
+      "relation": null,
+      "id": "c_mp0kr2ci_gz8u"
     }
   ],
   "medications": [
@@ -185,9 +516,10 @@
       "id": "m1",
       "name": "Lisinopril 10 mg",
       "schedule": "Every morning with water",
-      "nextDose": 1776670188305,
+      "nextDose": 1778552767652,
       "prescribedBy": "Dr. Lin",
-      "active": true
+      "active": true,
+      "lastTakenAt": 1778466367652
     },
     {
       "id": "m2",
@@ -196,8 +528,737 @@
       "nextDose": 1776684588305,
       "prescribedBy": null,
       "active": true
+    },
+    {
+      "name": "Magnesium 200 mg",
+      "schedule": "Take 200mg magnesium supplements every morning, every day.",
+      "nextDose": 1778576400000,
+      "prescribedBy": null,
+      "active": true,
+      "createdAt": 1778466367732,
+      "id": "m_mp0kyfw4_fn34"
     }
   ],
-  "transcripts": [],
-  "meetings": []
+  "transcripts": [
+    {
+      "title": "Medical visit · 5/10/2026, 9:26:01 PM",
+      "text": "Okay, so it seems, Surya, that you're a little low on magnesium, so I'm going to recommend that you take 200mg magnesium supplements every morning, every day, and after 6 months we'll come back to your checkup and see how you've been doing and if your magnesium intake has improved.",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0,
+          "end": 6.760000228881836,
+          "text": "Okay, so it seems, Surya, that you're a little low on magnesium, so I'm going to recommend",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 1,
+          "start": 6.760000228881836,
+          "end": 12.4399995803833,
+          "text": "that you take 200mg magnesium supplements every morning, every day, and after 6 months",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 2,
+          "start": 12.4399995803833,
+          "end": 15.680000305175781,
+          "text": "we'll come back to your checkup and see how you've been doing and if your magnesium intake",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 3,
+          "start": 15.680000305175781,
+          "end": 16.239999771118164,
+          "text": "has improved.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        }
+      ],
+      "language": "english",
+      "duration": 16.979999542236328,
+      "kind": "medical_visit",
+      "createdAt": 1778466364022,
+      "id": "t_mp0kyd12_ky0v"
+    },
+    {
+      "title": "Medical visit · 5/10/2026, 9:21:25 PM",
+      "text": "Okay, Surya, it seems that you're pretty on magnesium. How about this? Take magnesium supplements, 400 grams, each morning, every day, for the next year. And I'll see you next on your yearly checkup to see how it's been going, okay?",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0,
+          "end": 5.159999847412109,
+          "text": "Okay, Surya, it seems that you're pretty on magnesium.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 1,
+          "start": 5.159999847412109,
+          "end": 6.159999847412109,
+          "text": "How about this?",
+          "speaker": "Speaker 1",
+          "emotion": "curious"
+        },
+        {
+          "id": 2,
+          "start": 6.159999847412109,
+          "end": 11.4399995803833,
+          "text": "Take magnesium supplements, 400 grams, each morning, every day, for the next year.",
+          "speaker": "Speaker 2",
+          "emotion": "neutral"
+        },
+        {
+          "id": 3,
+          "start": 11.4399995803833,
+          "end": 14.680000305175781,
+          "text": "And I'll see you next on your yearly checkup to see how it's been going, okay?",
+          "speaker": "Speaker 2",
+          "emotion": "curious"
+        }
+      ],
+      "language": "english",
+      "duration": 15.720000267028809,
+      "kind": "medical_visit",
+      "createdAt": 1778466087169,
+      "id": "t_mp0ksfep_c8na"
+    },
+    {
+      "title": "Lecture · 5/10/2026, 8:22:37 PM",
+      "text": "Class, the mitochondria is the powerhouse of the cell. It produces ATP, which is the cell's source of energy.",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0,
+          "end": 4,
+          "text": "Class, the mitochondria is the powerhouse of the cell.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 1,
+          "start": 4,
+          "end": 7,
+          "text": "It produces ATP, which is the cell's source of energy.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        }
+      ],
+      "language": "english",
+      "duration": 7.019999980926514,
+      "kind": "lecture",
+      "createdAt": 1778462558193,
+      "id": "t_mp0iosfl_86pn"
+    },
+    {
+      "title": "Lecture · 5/10/2026, 8:11:55 PM",
+      "text": "The mind of conjurer is the powerhouse of the self.",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0,
+          "end": 3,
+          "text": "The mind of conjurer is the powerhouse of the self.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        }
+      ],
+      "language": "english",
+      "duration": 2.5799999237060547,
+      "kind": "lecture",
+      "createdAt": 1778461919286,
+      "id": "t_mp0ib3g6_6v2s"
+    },
+    {
+      "title": "Lecture · 5/10/2026, 8:11:32 PM",
+      "text": "The mitochondria is the parasite of the cell. It produces ATP via oxidative phosphorylation.",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0,
+          "end": 3.8399999141693115,
+          "text": "The mitochondria is the parasite of the cell.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 1,
+          "start": 3.8399999141693115,
+          "end": 6.480000019073486,
+          "text": "It produces ATP via oxidative phosphorylation.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        }
+      ],
+      "language": "english",
+      "duration": 6.71999979019165,
+      "kind": "lecture",
+      "createdAt": 1778461894580,
+      "id": "t_mp0iakdw_dfk9"
+    },
+    {
+      "title": "Lecture · 5/10/2026, 8:10:10 PM",
+      "text": "The mitochondria is the powerhouse of the cell.",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0,
+          "end": 3,
+          "text": "The mitochondria is the powerhouse of the cell.",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        }
+      ],
+      "language": "english",
+      "duration": 3.180000066757202,
+      "kind": "lecture",
+      "createdAt": 1778461811827,
+      "id": "t_mp0i8sj7_id1"
+    },
+    {
+      "title": "Lecture · 5/10/2026, 8:09:38 PM",
+      "text": "Okay class, the mitochondria is the powerhouse that sells. Do you guys know how mitochondria creates ATP? Well first, do you know what ATP is? ATP is adenine triphosphate. Do you guys know how adenine triphosphate is created? It is combined using two elements, inorganic phosphate and adenine diphosphate, okay?",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0,
+          "end": 6.320000171661377,
+          "text": "Okay class, the mitochondria is the powerhouse that sells. Do you guys know how mitochondria",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 1,
+          "start": 6.320000171661377,
+          "end": 12.960000038146973,
+          "text": "creates ATP? Well first, do you know what ATP is? ATP is adenine triphosphate. Do you guys know",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 2,
+          "start": 12.960000038146973,
+          "end": 19.520000457763672,
+          "text": "how adenine triphosphate is created? It is combined using two elements, inorganic phosphate",
+          "speaker": "Speaker 1",
+          "emotion": "neutral"
+        },
+        {
+          "id": 3,
+          "start": 19.520000457763672,
+          "end": 21.68000030517578,
+          "text": "and adenine diphosphate, okay?",
+          "speaker": "Speaker 1",
+          "emotion": "curious"
+        }
+      ],
+      "language": "english",
+      "duration": 21.84000015258789,
+      "kind": "lecture",
+      "createdAt": 1778461780789,
+      "id": "t_mp0i84l1_8sfv"
+    }
+  ],
+  "meetings": [
+    {
+      "title": "Magnesium Supplement Recommendation",
+      "kind": "meeting",
+      "transcriptId": "t_mp0kyd12_ky0v",
+      "summary": {
+        "title": "Magnesium Supplement Recommendation",
+        "tldr": "Surya is advised to take 200mg magnesium supplements daily for 6 months, followed by a checkup to assess improvement.",
+        "decisions": [
+          "Surya will take 200mg magnesium supplements every morning.",
+          "A follow-up checkup will be scheduled in 6 months."
+        ],
+        "actionItems": [
+          {
+            "owner": "Surya",
+            "task": "Start taking 200mg magnesium supplements daily",
+            "due": null
+          },
+          {
+            "owner": "you",
+            "task": "Schedule a follow-up checkup in 6 months",
+            "due": null
+          }
+        ],
+        "questionsForYou": [],
+        "followUpEmailDraft": "Hi Surya,\n\nJust a quick note to confirm that you will start taking 200mg magnesium supplements every morning. We will schedule a follow-up checkup in 6 months to see how you're doing.\n\nBest,\n[Your Name]"
+      },
+      "vibe": null,
+      "createdAt": 1778466367677,
+      "id": "m_mp0kyful_e28t"
+    },
+    {
+      "title": "Magnesium Supplementation Plan",
+      "kind": "meeting",
+      "transcriptId": "t_mp0ksfep_c8na",
+      "summary": {
+        "title": "Magnesium Supplementation Plan",
+        "tldr": "Surya will take 400 grams of magnesium supplements daily for one year, with a follow-up checkup scheduled for next year.",
+        "decisions": [
+          "Surya will start taking magnesium supplements.",
+          "The dosage will be 400 grams each morning.",
+          "The supplementation will continue for one year.",
+          "A follow-up checkup will be scheduled for next year."
+        ],
+        "actionItems": [
+          {
+            "owner": "Surya",
+            "task": "Start taking magnesium supplements daily at the prescribed dosage.",
+            "due": null
+          },
+          {
+            "owner": "you",
+            "task": "Schedule Surya's yearly checkup for next year.",
+            "due": null
+          }
+        ],
+        "questionsForYou": [],
+        "followUpEmailDraft": "Hi Surya,\n\nJust a quick reminder about our discussion regarding your magnesium supplementation. You'll be taking 400 grams each morning for the next year. We'll check in during your yearly checkup to assess your progress.\n\nBest,\n[Your Name]"
+      },
+      "vibe": null,
+      "createdAt": 1778466090765,
+      "id": "m_mp0ksi6l_6ebk"
+    },
+    {
+      "title": "Introduction to Mitochondria",
+      "kind": "lecture",
+      "transcriptId": "t_mp0iosfl_86pn",
+      "summary": {
+        "title": "Introduction to Mitochondria",
+        "tldr": "Mitochondria are essential organelles in cells, known as the powerhouse of the cell due to their role in producing ATP, the primary energy currency of the cell.",
+        "outline": [
+          {
+            "heading": "What are Mitochondria?",
+            "bullets": [
+              "Mitochondria are double-membrane-bound organelles.",
+              "Found in nearly all eukaryotic cells.",
+              "Involved in energy production and metabolism.",
+              "Contain their own DNA and ribosomes.",
+              "Play a role in cell signaling and apoptosis."
+            ]
+          },
+          {
+            "heading": "Function of Mitochondria",
+            "bullets": [
+              "Main function is ATP production through cellular respiration.",
+              "Convert biochemical energy from nutrients into ATP.",
+              "Involved in the Krebs cycle and oxidative phosphorylation.",
+              "Regulate metabolic pathways.",
+              "Help maintain cellular homeostasis."
+            ]
+          },
+          {
+            "heading": "ATP: The Energy Currency",
+            "bullets": [
+              "ATP stands for adenosine triphosphate.",
+              "Serves as the primary energy carrier in cells.",
+              "Energy is released when ATP is hydrolyzed.",
+              "Used in various cellular processes, including muscle contraction.",
+              "Regenerates from ADP and inorganic phosphate."
+            ]
+          },
+          {
+            "heading": "Importance of Mitochondria",
+            "bullets": [
+              "Critical for energy metabolism.",
+              "Support cellular functions and survival.",
+              "Involved in the regulation of the cell cycle.",
+              "Impact aging and age-related diseases.",
+              "Linked to metabolic disorders."
+            ]
+          },
+          {
+            "heading": "Mitochondrial DNA",
+            "bullets": [
+              "Mitochondria have their own circular DNA.",
+              "Inherited maternally.",
+              "Encodes essential proteins for mitochondrial function.",
+              "Mutations can lead to mitochondrial diseases.",
+              "Used in studies of human evolution and ancestry."
+            ]
+          },
+          {
+            "heading": "Mitochondrial Dysfunction",
+            "bullets": [
+              "Can lead to a variety of diseases.",
+              "Associated with neurodegenerative diseases.",
+              "Linked to metabolic syndromes.",
+              "Impact on muscle function and energy levels.",
+              "Research ongoing for potential therapies."
+            ]
+          }
+        ],
+        "keyTerms": [
+          {
+            "term": "Mitochondria",
+            "definition": "Organelles known as the powerhouse of the cell, responsible for ATP production."
+          },
+          {
+            "term": "ATP",
+            "definition": "Adenosine triphosphate, the main energy carrier in cells."
+          },
+          {
+            "term": "Cellular Respiration",
+            "definition": "Process by which cells convert nutrients into ATP."
+          },
+          {
+            "term": "Krebs Cycle",
+            "definition": "A series of reactions in mitochondria that produce energy through the oxidation of acetyl-CoA."
+          },
+          {
+            "term": "Oxidative Phosphorylation",
+            "definition": "Process of ATP production that occurs in the mitochondria, involving electron transport chain."
+          },
+          {
+            "term": "Apoptosis",
+            "definition": "Programmed cell death, a process regulated by mitochondria."
+          },
+          {
+            "term": "Mitochondrial DNA",
+            "definition": "DNA found in mitochondria, distinct from nuclear DNA."
+          },
+          {
+            "term": "Metabolic Disorders",
+            "definition": "Conditions that affect the body's metabolism, often linked to mitochondrial function."
+          },
+          {
+            "term": "Neurodegenerative Diseases",
+            "definition": "Disorders characterized by the progressive degeneration of the nervous system."
+          },
+          {
+            "term": "Cell Cycle",
+            "definition": "The series of phases that a cell goes through leading to its division and duplication."
+          },
+          {
+            "term": "Homeostasis",
+            "definition": "The maintenance of stable internal conditions in an organism."
+          },
+          {
+            "term": "Mutations",
+            "definition": "Changes in the DNA sequence that can affect organelle function."
+          }
+        ],
+        "actionItems": [
+          "Review the structure and function of mitochondria.",
+          "Study the process of ATP production in detail.",
+          "Explore the implications of mitochondrial dysfunction in diseases.",
+          "Understand the significance of mitochondrial DNA in genetics."
+        ],
+        "flashcards": [
+          {
+            "q": "What is the main function of mitochondria?",
+            "a": "To produce ATP, the energy currency of the cell."
+          },
+          {
+            "q": "What does ATP stand for?",
+            "a": "Adenosine triphosphate."
+          },
+          {
+            "q": "How is mitochondrial DNA inherited?",
+            "a": "Maternally."
+          },
+          {
+            "q": "What is the Krebs cycle?",
+            "a": "A series of reactions in mitochondria that produce energy."
+          },
+          {
+            "q": "What is apoptosis?",
+            "a": "Programmed cell death regulated by mitochondria."
+          },
+          {
+            "q": "What are metabolic disorders?",
+            "a": "Conditions that affect the body's metabolism, often linked to mitochondrial function."
+          },
+          {
+            "q": "What is oxidative phosphorylation?",
+            "a": "The process of ATP production involving the electron transport chain."
+          },
+          {
+            "q": "What are neurodegenerative diseases?",
+            "a": "Disorders characterized by the progressive degeneration of the nervous system."
+          },
+          {
+            "q": "What is homeostasis?",
+            "a": "The maintenance of stable internal conditions in an organism."
+          },
+          {
+            "q": "What are mutations?",
+            "a": "Changes in the DNA sequence that can affect organelle function."
+          },
+          {
+            "q": "What is the significance of mitochondrial DNA?",
+            "a": "It encodes essential proteins for mitochondrial function and is used in studies of human evolution."
+          },
+          {
+            "q": "What role do mitochondria play in the cell cycle?",
+            "a": "They are involved in regulating cellular functions and survival."
+          }
+        ]
+      },
+      "vibe": null,
+      "createdAt": 1778462574048,
+      "id": "m_mp0ip4o0_c56w"
+    },
+    {
+      "title": "The Power of the Mind in Conjuring",
+      "kind": "lecture",
+      "transcriptId": "t_mp0ib3g6_6v2s",
+      "summary": {
+        "title": "The Power of the Mind in Conjuring",
+        "tldr": "This lecture explores the significance of the mind in the art of conjuring, emphasizing its role as a source of personal power and creativity. Understanding how to harness mental capabilities can enhance performance in conjuring and other creative endeavors.",
+        "outline": [
+          {
+            "heading": "Introduction to Conjuring",
+            "bullets": [
+              "Definition of conjuring",
+              "Historical context of conjuring practices",
+              "Importance of mental focus in conjuring"
+            ]
+          },
+          {
+            "heading": "The Mind as a Powerhouse",
+            "bullets": [
+              "Explanation of the mind's role in creativity",
+              "Techniques to strengthen mental capabilities",
+              "Examples of successful conjurers and their mental strategies"
+            ]
+          },
+          {
+            "heading": "Practical Applications",
+            "bullets": [
+              "Ways to apply mental techniques in conjuring",
+              "Exercises for enhancing mental power",
+              "Impact of mindset on performance"
+            ]
+          }
+        ],
+        "keyTerms": [
+          {
+            "term": "Conjuring",
+            "definition": "The performance of tricks that deceive the audience into believing something impossible has occurred."
+          },
+          {
+            "term": "Mental Focus",
+            "definition": "The ability to concentrate one's thoughts and attention on a specific task or goal."
+          }
+        ],
+        "actionItems": [
+          "Practice mental exercises to enhance focus.",
+          "Research famous conjurers and their techniques.",
+          "Experiment with applying mental strategies in personal conjuring practice."
+        ],
+        "flashcards": [
+          {
+            "q": "What is conjuring?",
+            "a": "The performance of tricks that deceive the audience into believing something impossible has occurred."
+          },
+          {
+            "q": "Why is mental focus important in conjuring?",
+            "a": "It enhances creativity and performance, allowing conjurers to execute tricks more effectively."
+          }
+        ]
+      },
+      "vibe": null,
+      "createdAt": 1778461931438,
+      "id": "m_mp0ibctq_5p10"
+    },
+    {
+      "title": "Mitochondria and ATP Production",
+      "kind": "lecture",
+      "transcriptId": "t_mp0iakdw_dfk9",
+      "summary": {
+        "title": "Mitochondria and ATP Production",
+        "tldr": "Mitochondria are essential organelles in cells, often referred to as the 'powerhouse' due to their role in producing ATP through a process called oxidative phosphorylation. They are sometimes metaphorically described as 'parasites' because of their unique evolutionary origin and symbiotic relationship with host cells.",
+        "outline": [
+          {
+            "heading": "Introduction to Mitochondria",
+            "bullets": [
+              "Mitochondria are known as the powerhouse of the cell.",
+              "They are crucial for energy production."
+            ]
+          },
+          {
+            "heading": "ATP Production",
+            "bullets": [
+              "ATP (adenosine triphosphate) is the energy currency of the cell.",
+              "Produced through a process called oxidative phosphorylation."
+            ]
+          },
+          {
+            "heading": "Evolutionary Perspective",
+            "bullets": [
+              "Mitochondria are often described as 'parasites' due to their evolutionary origin.",
+              "They are believed to have originated from free-living bacteria."
+            ]
+          }
+        ],
+        "keyTerms": [
+          {
+            "term": "Mitochondria",
+            "definition": "Organelles in cells responsible for producing ATP through oxidative phosphorylation."
+          },
+          {
+            "term": "ATP",
+            "definition": "Adenosine triphosphate, the primary energy carrier in cells."
+          },
+          {
+            "term": "Oxidative Phosphorylation",
+            "definition": "A metabolic pathway that uses energy released by the oxidation of nutrients to produce ATP."
+          }
+        ],
+        "actionItems": [
+          "Review the process of oxidative phosphorylation.",
+          "Explore the evolutionary history of mitochondria."
+        ],
+        "flashcards": [
+          {
+            "q": "What is the main function of mitochondria?",
+            "a": "To produce ATP through oxidative phosphorylation."
+          },
+          {
+            "q": "Why are mitochondria referred to as 'parasites'?",
+            "a": "Due to their evolutionary origin from free-living bacteria."
+          }
+        ]
+      },
+      "vibe": null,
+      "createdAt": 1778461911389,
+      "id": "m_mp0iaxct_ap5h"
+    },
+    {
+      "title": "Introduction to Mitochondria",
+      "kind": "lecture",
+      "transcriptId": "t_mp0i8sj7_id1",
+      "summary": {
+        "title": "Introduction to Mitochondria",
+        "tldr": "Mitochondria are essential organelles in cells known as the powerhouse due to their role in producing energy. They convert nutrients into adenosine triphosphate (ATP), which powers various cellular functions.",
+        "outline": [
+          {
+            "heading": "Function of Mitochondria",
+            "bullets": [
+              "Convert nutrients into energy (ATP)",
+              "Regulate metabolic processes",
+              "Involved in cell signaling and apoptosis"
+            ]
+          },
+          {
+            "heading": "Structure of Mitochondria",
+            "bullets": [
+              "Double membrane structure",
+              "Inner membrane contains folds called cristae",
+              "Matrix contains enzymes for the Krebs cycle"
+            ]
+          }
+        ],
+        "keyTerms": [
+          {
+            "term": "ATP",
+            "definition": "Adenosine triphosphate, the energy currency of the cell."
+          },
+          {
+            "term": "Cristae",
+            "definition": "The folds of the inner mitochondrial membrane that increase surface area for energy production."
+          },
+          {
+            "term": "Apoptosis",
+            "definition": "Programmed cell death, a process regulated by mitochondria."
+          }
+        ],
+        "actionItems": [
+          "Review the structure and function of mitochondria in your textbook.",
+          "Understand the role of ATP in cellular processes."
+        ],
+        "flashcards": [
+          {
+            "q": "What is the primary function of mitochondria?",
+            "a": "To produce energy in the form of ATP."
+          },
+          {
+            "q": "What are cristae?",
+            "a": "Folds in the inner mitochondrial membrane that increase surface area for energy production."
+          }
+        ]
+      },
+      "vibe": null,
+      "createdAt": 1778461824966,
+      "id": "m_mp0i92o6_73xp"
+    },
+    {
+      "title": "Introduction to Mitochondria and ATP",
+      "kind": "lecture",
+      "transcriptId": "t_mp0i84l1_8sfv",
+      "summary": {
+        "title": "Introduction to Mitochondria and ATP",
+        "tldr": "Mitochondria are known as the powerhouse of the cell, responsible for producing ATP (adenine triphosphate). ATP is formed through a combination of inorganic phosphate and adenine diphosphate.",
+        "outline": [
+          {
+            "heading": "Mitochondria Overview",
+            "bullets": [
+              "Mitochondria are referred to as the powerhouse of the cell.",
+              "They play a crucial role in energy production."
+            ]
+          },
+          {
+            "heading": "What is ATP?",
+            "bullets": [
+              "ATP stands for adenine triphosphate.",
+              "It is the primary energy carrier in cells."
+            ]
+          },
+          {
+            "heading": "Formation of ATP",
+            "bullets": [
+              "ATP is created by combining inorganic phosphate with adenine diphosphate.",
+              "This process is essential for energy transfer within cells."
+            ]
+          }
+        ],
+        "keyTerms": [
+          {
+            "term": "Mitochondria",
+            "definition": "Organelles in cells that produce energy, often referred to as the powerhouse of the cell."
+          },
+          {
+            "term": "ATP",
+            "definition": "Adenine triphosphate, the main energy carrier in cells."
+          },
+          {
+            "term": "Inorganic Phosphate",
+            "definition": "A chemical compound that combines with adenine diphosphate to form ATP."
+          },
+          {
+            "term": "Adenine Diphosphate",
+            "definition": "A molecule that, when combined with inorganic phosphate, forms ATP."
+          }
+        ],
+        "actionItems": [
+          "Review the process of ATP formation.",
+          "Study the role of mitochondria in cellular energy production."
+        ],
+        "flashcards": [
+          {
+            "q": "What is the primary function of mitochondria?",
+            "a": "To produce energy for the cell."
+          },
+          {
+            "q": "What does ATP stand for?",
+            "a": "Adenine triphosphate."
+          },
+          {
+            "q": "What two components are combined to create ATP?",
+            "a": "Inorganic phosphate and adenine diphosphate."
+          }
+        ]
+      },
+      "vibe": null,
+      "createdAt": 1778461798697,
+      "id": "m_mp0i8ieh_h8ik"
+    }
+  ]
 }

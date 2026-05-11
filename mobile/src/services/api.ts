@@ -80,6 +80,16 @@ export type PreferencesDTO = {
 
 export type ProfileDTO = { userName: string; createdAt?: number };
 
+export type MeetingDTO = {
+  id: string;
+  title: string;
+  kind: string;
+  transcriptId?: string | null;
+  summary: any;
+  vibe?: any;
+  createdAt: number;
+};
+
 export type StateSnapshot = {
   profile: ProfileDTO;
   preferences: PreferencesDTO;
@@ -88,7 +98,7 @@ export type StateSnapshot = {
   contacts: TrustedContactDTO[];
   medications: MedicationDTO[];
   transcripts: Array<{ id: string; title: string; kind: string; preview: string; language: string; duration: number; createdAt: number }>;
-  meetings: Array<{ id: string; title: string; kind: string; summary: any; vibe: any; createdAt: number }>;
+  meetings: MeetingDTO[];
   stats: { totalActions: number; pendingActions: number; totalEvents: number; emergencyEvents: number };
   serverTime: number;
 };
@@ -104,7 +114,7 @@ export const api = {
   // ---------- actions ----------
   listActions:   () => jsonRequest<{ actions: CapturedActionDTO[] }>("/api/actions"),
   addAction:     (a: Partial<CapturedActionDTO>) =>
-    jsonRequest<{ action: CapturedActionDTO }>("/api/actions", { method: "POST", body: JSON.stringify(a) }),
+    jsonRequest<{ action: CapturedActionDTO | null; duplicate?: boolean }>("/api/actions", { method: "POST", body: JSON.stringify(a) }),
   patchAction:   (id: string, patch: Partial<CapturedActionDTO>) =>
     jsonRequest<{ action: CapturedActionDTO }>(`/api/actions/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteAction:  (id: string) => jsonRequest<{ ok: boolean }>(`/api/actions/${id}`, { method: "DELETE" }),
@@ -143,7 +153,20 @@ export const api = {
       body: JSON.stringify(args),
     }),
   summarize: (args: { transcript: string; kind: "lecture" | "meeting"; save?: boolean; transcriptId?: string | null }) =>
-    jsonRequest<any>("/api/summarize", { method: "POST", body: JSON.stringify(args) }),
+    jsonRequest<any>("/api/summarize", { method: "POST", body: JSON.stringify(args) }, 120_000),
+
+  listMeetings: () =>
+    jsonRequest<{ meetings: MeetingDTO[] }>("/api/meetings", undefined, 25_000),
+
+  getMeeting: (id: string) =>
+    jsonRequest<{ meeting: MeetingDTO }>(`/api/meetings/${encodeURIComponent(id)}`, undefined, 25_000),
+
+  getTranscript: (id: string) =>
+    jsonRequest<{ transcript: { id: string; text: string; title?: string } }>(
+      `/api/transcripts/${encodeURIComponent(id)}`,
+      undefined,
+      25_000,
+    ),
   vibe:  (transcript: string, meetingId?: string) =>
     jsonRequest<any>("/api/vibe-report", { method: "POST", body: JSON.stringify({ transcript, meetingId }) }),
   recognizeSign: (imageBase64: string, priorSigns: string[]) =>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
@@ -6,11 +6,16 @@ import { useNavigation } from "@react-navigation/native";
 
 import { Screen } from "@/components/Screen";
 import { GlassCard } from "@/components/GlassCard";
-import { PulseRing } from "@/components/PulseRing";
 import { WaveformBars } from "@/components/WaveformBars";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SoundEventItem } from "@/components/SoundEventItem";
 import { ActionCard } from "@/components/ActionCard";
+import {
+  CapturedWeekStrip,
+  actionDayStart,
+  startOfLocalDay,
+  weekContaining,
+} from "@/components/CapturedWeekStrip";
 import { Tag } from "@/components/Tag";
 import { theme } from "@/theme";
 import { useEcho } from "@/context/EchoContext";
@@ -21,13 +26,43 @@ export default function HomeScreen() {
     isListening, nightMode, userName,
     soundEvents, actions, toggleActionDone,
     setIsListening, setNightMode, setUserName,
+    trustedCircle,
   } = useEcho();
   const nav = useNavigation<any>();
   const [nameModal, setNameModal] = useState(false);
   const [draftName, setDraftName] = useState(userName);
+  const todayStart = startOfLocalDay(new Date());
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(todayStart);
+  const [hoverDay, setHoverDay] = useState<number | null>(null);
+
+  const weekDays = useMemo(() => {
+    const d = new Date(todayStart);
+    d.setDate(d.getDate() + weekOffset * 7);
+    return weekContaining(startOfLocalDay(d));
+  }, [todayStart, weekOffset]);
+
+  useEffect(() => {
+    if (weekDays.includes(selectedDay)) return;
+    const pick = weekDays.find((d) => d === todayStart) ?? weekDays[0];
+    setSelectedDay(pick);
+  }, [weekDays, selectedDay, todayStart]);
+
+  const displayDay = hoverDay ?? selectedDay;
+  const dayActions = useMemo(() => {
+    const forDay = actions.filter((a) => actionDayStart(a) === displayDay);
+    const open = forDay.filter((a) => !a.done);
+    const done = forDay.filter((a) => a.done);
+    return [...open, ...done];
+  }, [actions, displayDay]);
 
   const recentEvents = soundEvents.slice(0, 3);
-  const pendingActions = actions.filter((a) => !a.done).slice(0, 2);
+  const pendingAny = actions.filter((a) => !a.done);
+  const standbyCount = trustedCircle.length;
+  const standbySubtitle =
+    standbyCount === 0
+      ? "No contacts on standby · Open Safety to add people · Location sharing ready"
+      : `${standbyCount} contact${standbyCount === 1 ? "" : "s"} on standby · Location sharing ready`;
   const now = new Date();
   const hour = now.getHours();
   const greeting = hour < 5 ? "Late night" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -60,16 +95,13 @@ export default function HomeScreen() {
           style={styles.heroTint}
         />
         <View style={styles.heroInner}>
-          <View style={styles.heroRingWrap}>
-            <PulseRing size={140} color={isListening ? theme.colors.accent : theme.colors.textMute} active={isListening} rings={3}>
-              <View style={styles.heroCore}>
-                <MaterialCommunityIcons
-                  name={isListening ? "waveform" : "waveform"}
-                  size={36}
-                  color={theme.colors.text}
-                />
-              </View>
-            </PulseRing>
+          <View
+            style={[
+              styles.heroIconTile,
+              isListening ? styles.heroIconTileLive : styles.heroIconTileIdle,
+            ]}
+          >
+            <MaterialCommunityIcons name="waveform" size={36} color={theme.colors.text} />
           </View>
 
           <View style={{ flex: 1 }}>
@@ -81,11 +113,14 @@ export default function HomeScreen() {
             <Text style={styles.heroTitle}>
               {isListening ? "Ambient mode active" : "Listening paused"}
             </Text>
-            <Text style={styles.heroSub}>
-              {isListening
-                ? `${soundEvents.length} events captured today · ${pendingActions.length} pending actions`
-                : "Tap the button to resume ambient awareness."}
+            <Text style={styles.heroCaption}>
+              Ambient hearing keeps the mic on quietly so speech and sounds around you can show up as alerts and tasks.
             </Text>
+            {isListening ? (
+              <Text style={styles.heroSub}>
+                {soundEvents.length} events captured today · {pendingAny.length} open tasks
+              </Text>
+            ) : null}
 
             <View style={styles.heroWave}>
               <WaveformBars bars={34} height={32} color={theme.colors.cyan} active={isListening} />
@@ -129,19 +164,19 @@ export default function HomeScreen() {
         <QuickTile
           icon={<Ionicons name="chatbubbles" size={22} color={theme.colors.cyan} />}
           label="Conversation"
-          sub="Live caption + diarization"
+          sub="Who said what, live"
           onPress={() => nav.navigate("Talk")}
         />
         <QuickTile
           icon={<MaterialCommunityIcons name="hand-wave" size={22} color={theme.colors.primary} />}
           label="ASL Bridge"
-          sub="Two-way translator"
+          sub="Sign and voice both ways"
           onPress={() => nav.navigate("ASL")}
         />
         <QuickTile
           icon={<Ionicons name="school" size={22} color={theme.colors.warning} />}
           label="Class / Meeting"
-          sub="Auto notes + flashcards"
+          sub="Notes, cards, recap"
           onPress={() => nav.navigate("Classroom")}
         />
         <QuickTile
@@ -154,7 +189,7 @@ export default function HomeScreen() {
 
       {/* Smart actions */}
       <SectionHeader
-        eyebrow="Smart Action Engine"
+        eyebrow="Tasks"
         title="Captured for you"
         action={
           <Pressable onPress={() => nav.navigate("Listen")}>
@@ -162,16 +197,54 @@ export default function HomeScreen() {
           </Pressable>
         }
       />
-      {pendingActions.length === 0 ? (
-        <EmptyHint text="Nothing captured right now. When someone speaks your name or makes a plan, ECHO will record it here." />
+      <GlassCard intensity="low" style={{ marginBottom: 12, marginHorizontal: -18, alignSelf: "stretch" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, paddingHorizontal: 18 }}>
+          <Text style={{ ...theme.type.label, color: theme.colors.textDim }}>WEEK VIEW</Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Pressable onPress={() => { setWeekOffset((w) => w - 1); haptic.light(); }} hitSlop={8}>
+              <Feather name="chevron-left" size={18} color={theme.colors.accent} />
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setWeekOffset(0);
+                setSelectedDay(todayStart);
+                setHoverDay(null);
+                haptic.light();
+              }}
+              hitSlop={8}
+            >
+              <Text style={{ ...theme.type.label, color: theme.colors.accent }}>This week</Text>
+            </Pressable>
+            <Pressable onPress={() => { setWeekOffset((w) => w + 1); haptic.light(); }} hitSlop={8}>
+              <Feather name="chevron-right" size={18} color={theme.colors.accent} />
+            </Pressable>
+          </View>
+        </View>
+        <CapturedWeekStrip
+          actions={actions}
+          weekDays={weekDays}
+          selectedDay={selectedDay}
+          hoverDay={hoverDay}
+          onSelectDay={(d) => { setSelectedDay(d); setHoverDay(null); haptic.light(); }}
+          onHoverDay={setHoverDay}
+        />
+      </GlassCard>
+      {dayActions.length === 0 ? (
+        <EmptyHint text="Nothing on this day yet. Use Talk or Listen and we’ll add tasks when we catch plans, your name, or phrases like “tomorrow.”" />
       ) : (
-        pendingActions.map((a) => (
-          <ActionCard key={a.id} action={a} onToggle={() => toggleActionDone(a.id)} onSchedule={() => haptic.success()} />
+        dayActions.map((a) => (
+          <ActionCard
+            key={a.id}
+            action={a}
+            emphasizeCompletedStrike
+            onToggle={() => toggleActionDone(a.id)}
+            onSchedule={() => haptic.success()}
+          />
         ))
       )}
 
       {/* Recent sounds */}
-      <SectionHeader eyebrow="Ambient Awareness" title="Recent sounds" />
+      <SectionHeader eyebrow="Around you" title="Recent sounds" />
       {recentEvents.map((e) => (
         <SoundEventItem key={e.id} event={e} />
       ))}
@@ -186,7 +259,7 @@ export default function HomeScreen() {
           <View style={{ flex: 1 }}>
             <Text style={{ ...theme.type.h3, color: theme.colors.text }}>Emergency ready</Text>
             <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 2 }}>
-              3 contacts on standby · Location sharing ready
+              {standbySubtitle}
             </Text>
           </View>
           <Pressable onPress={() => nav.navigate("SOS")} style={styles.openBtn}>
@@ -196,8 +269,8 @@ export default function HomeScreen() {
       </GlassCard>
 
       <Text style={styles.foot}>
-        ECHO last indexed ambient audio {timeAgo(Date.now() - 1000 * 30)}. Everything is encrypted and
-        auto-deleted after {7} days unless you pin it.
+        Last ambient update {timeAgo(Date.now() - 1000 * 30)}. Your audio is encrypted and drops after{" "}
+        {7} days unless you keep it.
       </Text>
 
       <Modal visible={nameModal} transparent animationType="fade" onRequestClose={() => setNameModal(false)}>
@@ -208,8 +281,7 @@ export default function HomeScreen() {
               Name ECHO listens for
             </Text>
             <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 6 }}>
-              When this name is spoken — in a conversation, in the background, or across the room —
-              ECHO escalates the moment and extracts anything that sounds like a task.
+              If someone says this name (chat, background noise, or across the room), we flag it and turn nearby mentions into tasks when it makes sense.
             </Text>
             <TextInput
               value={draftName}
@@ -275,15 +347,32 @@ const styles = StyleSheet.create({
   hero: { overflow: "hidden" },
   heroTint: { ...StyleSheet.absoluteFillObject, opacity: 0.25 },
   heroInner: { flexDirection: "row", gap: 14, padding: 18, alignItems: "center" },
-  heroRingWrap: { width: 140, height: 140, alignItems: "center", justifyContent: "center" },
-  heroCore: {
-    width: 80, height: 80, borderRadius: 40,
+  heroIconTile: {
+    width: 76,
+    height: 76,
+    borderRadius: theme.radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
     backgroundColor: "rgba(10,13,30,0.65)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.18)",
-    alignItems: "center", justifyContent: "center",
+  },
+  heroIconTileLive: {
+    borderColor: theme.colors.accent + "88",
+    backgroundColor: theme.colors.accent + "18",
+  },
+  heroIconTileIdle: {
+    borderColor: "rgba(255,255,255,0.14)",
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   heroTitle: { ...theme.type.title, color: theme.colors.text, marginTop: 8 },
-  heroSub:   { ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 4 },
+  heroCaption: {
+    ...theme.type.bodySm,
+    fontSize: 12,
+    lineHeight: 16,
+    color: theme.colors.textMute,
+    marginTop: 6,
+  },
+  heroSub: { ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 8 },
   heroWave: { marginTop: 10, marginBottom: 14 },
   heroButtons: { flexDirection: "row", gap: 8 },
   heroBtn: {

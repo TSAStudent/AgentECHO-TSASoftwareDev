@@ -14,6 +14,15 @@ export function clock(ts: number): string {
   return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+export function formatDurationMs(ms: number): string {
+  const m = Math.max(0, Math.floor(ms / 60000));
+  if (m < 1) return "< 1 min";
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return mm ? `${h}h ${mm}m` : `${h}h`;
+}
+
 export const haptic = {
   light: async () => {
     try {

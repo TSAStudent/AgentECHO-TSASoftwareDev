@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import { Screen } from "@/components/Screen";
 import { GlassCard } from "@/components/GlassCard";
@@ -10,10 +10,30 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { Tag } from "@/components/Tag";
 import { theme } from "@/theme";
 import { haptic } from "@/utils/format";
-import { api } from "@/services/api";
+import { api, type MeetingDTO } from "@/services/api";
 import { useAudioRecorder } from "@/utils/useAudioRecorder";
 
 type Phase = "idle" | "recording" | "transcribing" | "summarizing" | "done" | "error";
+
+function stripMeetingPayload(raw: any) {
+  if (!raw || typeof raw !== "object") return null;
+  const { savedMeetingId: _s, ...rest } = raw;
+  return rest;
+}
+
+async function summarizeWithRetry(args: {
+  transcript: string;
+  kind: "lecture" | "meeting";
+  save: boolean;
+  transcriptId: string | null;
+}) {
+  try {
+    return await api.summarize(args);
+  } catch {
+    await new Promise((r) => setTimeout(r, 900));
+    return await api.summarize(args);
+  }
+}
 
 export default function ClassroomScreen() {
   const nav = useNavigation();
@@ -23,9 +43,35 @@ export default function ClassroomScreen() {
   const [transcript, setTranscript] = useState<string>("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  /** Lecture flashcards: index → answer visible */
+  const [flashRevealed, setFlashRevealed] = useState<Record<number, boolean>>({});
+  const [savedNotes, setSavedNotes] = useState<MeetingDTO[]>([]);
+  const [savedLoading, setSavedLoading] = useState(false);
   const { status, start, stop, durationMs } = useAudioRecorder();
 
   const recording = status === "recording";
+
+  const loadSavedNotes = useCallback(async () => {
+    setSavedLoading(true);
+    try {
+      const { meetings } = await api.listMeetings();
+      setSavedNotes([...(meetings || [])].sort((a, b) => b.createdAt - a.createdAt));
+    } catch {
+      setSavedNotes([]);
+    } finally {
+      setSavedLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedNotes();
+    }, [loadSavedNotes]),
+  );
+
+  useEffect(() => {
+    setFlashRevealed({});
+  }, [summary]);
 
   const onRecord = async () => {
     haptic.medium();
@@ -52,24 +98,26 @@ export default function ClassroomScreen() {
       setTranscript(text);
 
       setPhase("summarizing");
-      const sum = await api.summarize({
+      const sumRaw = await summarizeWithRetry({
         transcript: text,
         kind: mode,
         save: true,
         transcriptId: tr.savedTranscriptId || null,
       });
+      const sum = stripMeetingPayload(sumRaw);
       setSummary(sum);
 
       // For meetings, also run the vibe/mood report.
       if (mode === "meeting") {
         try {
-          const v = await api.vibe(text);
+          const v = await api.vibe(text, sumRaw?.savedMeetingId);
           setVibe(v);
         } catch { /* non-fatal */ }
       }
 
       setPhase("done");
       haptic.success();
+      void loadSavedNotes();
     } catch (err: any) {
       setPhase("error");
       setErrorMsg(err?.message || "Summarization failed");
@@ -78,11 +126,11 @@ export default function ClassroomScreen() {
 
   const phaseLabel = (() => {
     switch (phase) {
-      case "recording":    return `RECORDING · ${(durationMs / 1000).toFixed(1)}s — tap to stop`;
-      case "transcribing": return "TRANSCRIBING WITH WHISPER…";
-      case "summarizing":  return "STRUCTURING NOTES WITH GPT-4O…";
+      case "recording":    return `Recording ${(durationMs / 1000).toFixed(1)}s · tap stop when done`;
+      case "transcribing": return "Turning audio into text…";
+      case "summarizing":  return "Building notes…";
       case "done":         return "READY";
-      case "error":        return `ERROR — ${errorMsg}`;
+      case "error":        return `Error: ${errorMsg}`;
       default:             return "TAP RECORD TO START";
     }
   })();
@@ -132,8 +180,10 @@ export default function ClassroomScreen() {
             {mode === "lecture" ? "Record your lecture" : "Record your meeting"}
           </Text>
           <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 4 }}>
-            Whisper transcribes every speaker. When you stop, GPT-4o structures your
-            {mode === "lecture" ? " notes, pulls key terms, writes flashcards" : " notes, decisions, action items and drafts a follow-up email"}.
+            Hit record and set the phone down. When you stop, we transcribe speakers and then
+            {mode === "lecture"
+              ? " shape lecture notes, key terms, and simple flashcards"
+              : " shape meeting notes, decisions, tasks, and a short follow-up draft"}.
           </Text>
 
           <Pressable onPress={onRecord} disabled={phase === "transcribing" || phase === "summarizing"} style={[
@@ -158,6 +208,77 @@ export default function ClassroomScreen() {
           <Text style={{ ...theme.type.label, color: theme.colors.textMute, marginTop: 10 }}>{phaseLabel}</Text>
         </View>
       </GlassCard>
+
+      <SectionHeader
+        eyebrow="Library"
+        title={`Saved notes (${savedNotes.length})`}
+        action={
+          <Pressable
+            onPress={() => { haptic.light(); loadSavedNotes(); }}
+            hitSlop={12}
+            disabled={savedLoading}
+          >
+            {savedLoading ? (
+              <ActivityIndicator size="small" color={theme.colors.warning} />
+            ) : (
+              <Feather name="refresh-cw" size={16} color={theme.colors.warning} />
+            )}
+          </Pressable>
+        }
+      />
+      {savedNotes.length === 0 && !savedLoading ? (
+        <GlassCard intensity="low">
+          <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, textAlign: "center" }}>
+            Finished lectures and meetings appear here automatically. Record once, then open any row to review notes later.
+          </Text>
+        </GlassCard>
+      ) : null}
+      {savedNotes.slice(0, 40).map((m) => (
+        <Pressable
+          key={m.id}
+          onPress={async () => {
+            haptic.light();
+            setErrorMsg(null);
+            setPhase("done");
+            setSummary(m.summary);
+            setMode(m.kind === "meeting" ? "meeting" : "lecture");
+            setVibe(m.vibe ?? null);
+            setTranscript("");
+            if (m.transcriptId) {
+              try {
+                const { transcript: trDoc } = await api.getTranscript(m.transcriptId);
+                setTranscript(trDoc?.text || "");
+              } catch {
+                setTranscript("");
+              }
+            }
+          }}
+          style={{ marginBottom: 8 }}
+        >
+          <GlassCard intensity="low">
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View style={styles.savedIcon}>
+                <Ionicons
+                  name={m.kind === "meeting" ? "briefcase" : "school"}
+                  size={18}
+                  color={m.kind === "meeting" ? theme.colors.cyan : theme.colors.warning}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...theme.type.h3, color: theme.colors.text }} numberOfLines={2}>
+                  {m.title || (m.kind === "meeting" ? "Meeting" : "Lecture")}
+                </Text>
+                <Text style={{ ...theme.type.bodySm, color: theme.colors.textMute, marginTop: 4 }}>
+                  {(m.kind === "meeting" ? "Meeting" : "Lecture")}
+                  {" · "}
+                  {new Date(m.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={theme.colors.textMute} />
+            </View>
+          </GlassCard>
+        </Pressable>
+      ))}
 
       {transcript ? (
         <>
@@ -209,14 +330,38 @@ export default function ClassroomScreen() {
           {mode === "lecture" && summary.flashcards ? (
             <>
               <SectionHeader eyebrow="Study" title="Flashcards" />
-              {summary.flashcards.map((f: any, i: number) => (
-                <GlassCard key={i} intensity="low" style={{ marginBottom: 8 }}>
-                  <Text style={{ ...theme.type.label, color: theme.colors.textMute }}>Q</Text>
-                  <Text style={{ ...theme.type.body, color: theme.colors.text, marginBottom: 8 }}>{f.q}</Text>
-                  <Text style={{ ...theme.type.label, color: theme.colors.textMute }}>A</Text>
-                  <Text style={{ ...theme.type.body, color: theme.colors.accent }}>{f.a}</Text>
-                </GlassCard>
-              ))}
+              {summary.flashcards.map((f: any, i: number) => {
+                const revealed = Boolean(flashRevealed[i]);
+                return (
+                  <Pressable
+                    key={`fc-${i}-${String(f.q).slice(0, 24)}`}
+                    onPress={() => {
+                      haptic.light();
+                      setFlashRevealed((prev) => ({ ...prev, [i]: !prev[i] }));
+                    }}
+                  >
+                    <GlassCard intensity="low" style={{ marginBottom: 8 }}>
+                      <Text style={{ ...theme.type.label, color: theme.colors.textMute }}>QUESTION</Text>
+                      <Text style={{ ...theme.type.body, color: theme.colors.text, marginTop: 6 }}>{f.q}</Text>
+                      {!revealed ? (
+                        <Text style={{ ...theme.type.bodySm, color: theme.colors.textMute, marginTop: 14, fontStyle: "italic" }}>
+                          Tap card to reveal answer
+                        </Text>
+                      ) : (
+                        <>
+                          <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.outlineSoft }}>
+                            <Text style={{ ...theme.type.label, color: theme.colors.accent }}>ANSWER</Text>
+                            <Text style={{ ...theme.type.body, color: theme.colors.accent, marginTop: 6 }}>{f.a}</Text>
+                          </View>
+                          <Text style={{ ...theme.type.label, color: theme.colors.textMute, marginTop: 10 }}>
+                            Tap to hide
+                          </Text>
+                        </>
+                      )}
+                    </GlassCard>
+                  </Pressable>
+                );
+              })}
             </>
           ) : null}
 
@@ -282,4 +427,15 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.warning,
   },
   runBtnText: { ...theme.type.h3, color: "#07080F" },
+
+  savedIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: theme.colors.outlineSoft,
+  },
 });

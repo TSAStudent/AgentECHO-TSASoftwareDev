@@ -27,6 +27,8 @@ export default function AslScreen() {
   const [speechPhase, setSpeechPhase] = useState<"idle" | "recording" | "transcribing">("idle");
   const [speaking, setSpeaking] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  /** Full sentence guess from vision (shown under Plain English). */
+  const [englishFromVision, setEnglishFromVision] = useState("");
 
   const cameraRef = useRef<CameraView | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -34,8 +36,8 @@ export default function AslScreen() {
   const signsRef = useRef<string[]>([]);
   const { status: recStatus, start, stop } = useAudioRecorder();
 
-  // Keep a ref in sync with signs — the camera loop callback closes over stale
-  // state otherwise and we lose the running gloss history.
+  // Keep a ref in sync with signs; the camera loop callback closes over stale
+  // state otherwise we lose the running sign history.
   useEffect(() => { signsRef.current = activeSigns; }, [activeSigns]);
 
   // ---------- sign → speech: camera frame loop ----------
@@ -44,17 +46,30 @@ export default function AslScreen() {
     try {
       inFlightRef.current = true;
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.5,
+        quality: 0.72,
         base64: true,
-        skipProcessing: true,
+        // Let expo rotate/scale so hands appear upright for the vision model.
+        skipProcessing: false,
       });
       const base64 = (photo as any)?.base64;
       if (!base64) return;
       setRecognizing(true);
-      const res: any = await api.recognizeSign(base64, signsRef.current.slice(-6));
+      const res: any = await api.recognizeSign(base64, signsRef.current.slice(-8));
       setRecognizing(false);
-      const gloss = (res?.gloss || res?.sign || res?.top || "").toString().trim().toUpperCase();
-      if (gloss && gloss !== "NONE" && gloss.length < 24 && gloss !== signsRef.current[signsRef.current.length - 1]) {
+      const conf = typeof res?.confidence === "number" ? res.confidence : 0;
+      const glossRaw = (res?.gloss || res?.sign || res?.top || "").toString().trim().toUpperCase();
+      const junk = new Set(["", "NONE", "UNKNOWN", "UNSURE", "N/A", "NULL"]);
+      const gloss = junk.has(glossRaw) ? "" : glossRaw.replace(/\s+/g, "_");
+      const englishGuess = (res?.englishGuess || res?.english || "").toString().trim();
+      if (englishGuess.length > 1 && conf >= 0.3) {
+        setEnglishFromVision(englishGuess);
+      }
+      if (
+        gloss
+        && gloss.length < 28
+        && conf >= 0.26
+        && gloss !== signsRef.current[signsRef.current.length - 1]
+      ) {
         setActiveSigns((prev) => [...prev.slice(-14), gloss]);
         haptic.light();
       }
@@ -78,6 +93,10 @@ export default function AslScreen() {
       intervalRef.current = null;
     };
   }, [mode, permission?.granted, captureFrame]);
+
+  useEffect(() => {
+    if (mode !== "sign_to_speech") setEnglishFromVision("");
+  }, [mode]);
 
   // ---------- voice → sign: real mic → whisper ----------
   const onSpeechStartStop = async () => {
@@ -126,21 +145,23 @@ export default function AslScreen() {
     setTimeout(() => setSpeaking(false), 1800);
   };
 
-  const spokenTranslation = activeSigns.length > 0
-    ? activeSigns.join(" ").toLowerCase().replace(/\b./, (c) => c.toUpperCase()) + "."
-    : "…waiting for your first sign";
+  const spokenTranslation =
+    englishFromVision.trim() ||
+    (activeSigns.length > 0
+      ? activeSigns.join(" ").toLowerCase().replace(/\b./, (c) => c.toUpperCase()) + "."
+      : "…waiting for your first sign");
 
   return (
     <Screen>
       <View style={styles.header}>
         <View>
           <Text style={styles.eyebrow}>ASL BRIDGE</Text>
-          <Text style={styles.title}>Two-way translator</Text>
+          <Text style={styles.title}>Sign and voice together</Text>
         </View>
       </View>
 
       <View style={styles.modes}>
-        <ModePill active={mode === "sign_to_speech"} label="Sign → Voice" icon="hand-wave" onPress={() => { setMode("sign_to_speech"); setActiveSigns([]); haptic.light(); }} />
+        <ModePill active={mode === "sign_to_speech"} label="Sign → Voice" icon="hand-wave" onPress={() => { setMode("sign_to_speech"); setActiveSigns([]); setEnglishFromVision(""); haptic.light(); }} />
         <ModePill active={mode === "speech_to_sign"} label="Voice → Sign" icon="microphone" onPress={() => { setMode("speech_to_sign"); haptic.light(); }} />
         <ModePill active={mode === "service"}        label="Service mode" icon="storefront" onPress={() => { setMode("service"); haptic.light(); }} />
       </View>
@@ -162,8 +183,7 @@ export default function AslScreen() {
                   <MaterialCommunityIcons name="camera-off-outline" size={44} color={theme.colors.textMute} />
                   <Text style={styles.stageTitle}>Camera access needed</Text>
                   <Text style={styles.stageSub}>
-                    Grant camera permission and ECHO will watch your signs frame-by-frame
-                    via GPT-4o Vision.
+                    Turn on the camera so ECHO can read your signs from short snapshots. Your video stays on your phone unless you choose to send a frame for recognition.
                   </Text>
                   <Pressable onPress={requestPermission} style={styles.permBtn}>
                     <Text style={styles.permBtnText}>Enable camera</Text>
@@ -184,10 +204,9 @@ export default function AslScreen() {
                       </View>
                     ) : null}
                   </View>
-                  <Text style={styles.stageTitle}>Camera watching your signs</Text>
+                  <Text style={styles.stageTitle}>Signing into the camera</Text>
                   <Text style={styles.stageSub}>
-                    GPT-4o Vision evaluates every {(FRAME_INTERVAL_MS / 1000).toFixed(1)}s frame
-                    with the last ~6 signs as context.
+                    We grab a frame about every {(FRAME_INTERVAL_MS / 1000).toFixed(1)}s and use your recent signs for context. Tap “Read translation aloud” when you want sound. Nothing plays by itself.
                   </Text>
                 </View>
               )}
@@ -210,8 +229,7 @@ export default function AslScreen() {
                 </Text>
               </Pressable>
               <Text style={styles.stageSub}>
-                Your counterpart speaks — Whisper transcribes and ECHO renders live captions
-                alongside the signing avatar.
+                When someone else talks, record them here. You’ll get live captions you can read next to the avatar while you sign back.
               </Text>
             </View>
           )}
@@ -219,8 +237,8 @@ export default function AslScreen() {
           {mode === "service" && (
             <View style={{ alignItems: "center" }}>
               <View style={styles.serviceCard}>
-                <Text style={styles.serviceHeading}>I am Deaf —{"\n"}please read this 🙏</Text>
-                <Text style={styles.serviceSub}>I'll reply in text. Speak normally and I'll see captions.</Text>
+                <Text style={styles.serviceHeading}>I’m Deaf.{"\n"}Please read this 🙏</Text>
+                <Text style={styles.serviceSub}>I’ll answer in writing. You can speak normally; I’ll follow along in captions.</Text>
                 <Pressable
                   onPress={() => speakAloud("I am Deaf. Please read this or respond in text. I will show captions to you.")}
                   style={styles.servicePress}
@@ -236,7 +254,7 @@ export default function AslScreen() {
 
       {mode === "sign_to_speech" && (
         <GlassCard style={{ marginTop: 16 }}>
-          <Text style={{ ...theme.type.label, color: theme.colors.accent }}>RECOGNIZED ASL GLOSS</Text>
+          <Text style={{ ...theme.type.label, color: theme.colors.accent }}>SIGNS WE’RE SEEING</Text>
           <View style={styles.signStream}>
             {activeSigns.map((s, i) => (
               <View key={`${s}-${i}`} style={styles.signChip}>
@@ -245,17 +263,21 @@ export default function AslScreen() {
             ))}
             {activeSigns.length === 0 ? (
               <Text style={{ ...theme.type.bodySm, color: theme.colors.textMute }}>
-                No signs yet — start signing into the camera.
+                Nothing picked up yet. Try signing clearly toward the camera.
               </Text>
             ) : null}
           </View>
           <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.outlineSoft }}>
-            <Text style={{ ...theme.type.label, color: theme.colors.textDim }}>SPOKEN TRANSLATION</Text>
+            <Text style={{ ...theme.type.label, color: theme.colors.textDim }}>PLAIN ENGLISH</Text>
             <Text style={{ ...theme.type.title, color: theme.colors.text, marginTop: 4 }}>{spokenTranslation}</Text>
-            <WaveformBars bars={22} height={24} color={theme.colors.accent} active={activeSigns.length > 0} />
-            {activeSigns.length > 0 ? (
-              <Pressable onPress={() => speakAloud(spokenTranslation)} style={[styles.permBtn, { marginTop: 10 }]}>
-                <Text style={styles.permBtnText}>{speaking ? "Speaking…" : "Speak aloud"}</Text>
+            <WaveformBars bars={22} height={24} color={theme.colors.accent} active={speaking} />
+            {(activeSigns.length > 0 || englishFromVision.trim().length > 0) ? (
+              <Pressable
+                onPress={() => speakAloud(spokenTranslation)}
+                disabled={speaking}
+                style={[styles.permBtn, { marginTop: 10 }, speaking && { opacity: 0.6 }]}
+              >
+                <Text style={styles.permBtnText}>{speaking ? "Speaking…" : "Read translation aloud"}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -264,7 +286,7 @@ export default function AslScreen() {
 
       {mode === "speech_to_sign" && (
         <GlassCard style={{ marginTop: 16 }}>
-          <Text style={{ ...theme.type.label, color: theme.colors.cyan }}>HEARD (LIVE CAPTION)</Text>
+          <Text style={{ ...theme.type.label, color: theme.colors.cyan }}>LIVE CAPTION</Text>
           <Text style={{ ...theme.type.title, color: theme.colors.text, marginTop: 6, minHeight: 56 }}>
             {heardText || (speechPhase === "recording" ? "Listening…" : "Tap the mic to caption speech.")}
             {speechPhase === "recording" ? <Text style={{ color: theme.colors.cyan }}>▍</Text> : null}
@@ -292,9 +314,9 @@ export default function AslScreen() {
       ) : null}
 
       <View style={{ marginTop: 16, flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-        <Tag label="GPT-4o Vision" color={theme.colors.info} />
-        <Tag label="Whisper captions" color={theme.colors.primary} />
-        <Tag label="Real-time TTS" color={theme.colors.accent} />
+        <Tag label="Camera signing" color={theme.colors.info} />
+        <Tag label="Speech to text" color={theme.colors.primary} />
+        <Tag label="Tap to hear" color={theme.colors.accent} />
       </View>
     </Screen>
   );
@@ -311,11 +333,9 @@ const ModePill: React.FC<{ active: boolean; label: string; icon: any; onPress: (
 
 const AvatarSign: React.FC = () => (
   <View style={{ width: 120, height: 120, alignItems: "center", justifyContent: "center" }}>
-    <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: theme.colors.cyan, alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: theme.colors.cyan, alignItems: "center", justifyContent: "center" }}>
       <MaterialCommunityIcons name="emoticon-outline" size={44} color="#07080F" />
     </View>
-    <View style={{ marginTop: -16, width: 90, height: 34, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.16)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" }} />
-    <View style={{ marginTop: 6, width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.cyan, opacity: 0.8 }} />
   </View>
 );
 

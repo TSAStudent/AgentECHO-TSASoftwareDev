@@ -30,16 +30,15 @@ export default function OnboardingScreen({ navigation }: NativeStackScreenProps<
           <Text style={styles.eyebrow}>AGENT ECHO</Text>
           <Text style={styles.title}>Your ears, voice, and{"\n"}executive assistant.</Text>
           <Text style={styles.subtitle}>
-            Always-on AI built for the Deaf and hard-of-hearing community.
-            ECHO listens, understands context, and quietly acts on your behalf —
-            so you never have to open an app again.
+            Built with Deaf and hard-of-hearing folks in mind. ECHO catches sound and speech in the background,
+            turns it into useful cues and tasks, and keeps things calm so you’re not living inside menus.
           </Text>
 
           <View style={styles.bullets}>
             {[
               { icon: "ear",                 text: "Ambient sound + name detection" },
               { icon: "sparkles",            text: "Smart action capture from speech" },
-              { icon: "hand-left",           text: "Two-way ASL translation" },
+              { icon: "hand-left",           text: "Sign ↔ voice bridge" },
               { icon: "shield-checkmark",    text: "Trusted Circle emergency layer" },
             ].map((b) => (
               <View key={b.icon} style={styles.bullet}>

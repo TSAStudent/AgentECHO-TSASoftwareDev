@@ -65,8 +65,7 @@ export default function SettingsScreen() {
           style={styles.input}
         />
         <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 8 }}>
-          ECHO escalates events where this name is spoken directly to you — and when it's heard
-          during ambient listening, any task that follows is auto-added to your captured actions.
+          If someone says your name to you, we surface it. During ambient listening we also try to turn nearby instructions into tasks when they sound directed at you.
         </Text>
       </GlassCard>
 
@@ -97,7 +96,7 @@ export default function SettingsScreen() {
       <SectionHeader eyebrow="Privacy" title="Data & retention" />
       <GlassCard>
         <Toggle
-          label="Allow cloud offload (Whisper, GPT-4)"
+          label="Allow cloud processing for speech & summaries"
           value={preferences.allowCloudOffload}
           onChange={(v) => setPreference("allowCloudOffload", v)}
         />

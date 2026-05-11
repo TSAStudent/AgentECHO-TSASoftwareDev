@@ -1,20 +1,27 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View, Platform } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { Modal, Pressable, StyleSheet, Text, View, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 
 import { Screen } from "@/components/Screen";
 import { GlassCard } from "@/components/GlassCard";
-import { PulseRing } from "@/components/PulseRing";
 import { WaveformBars } from "@/components/WaveformBars";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SoundEventItem } from "@/components/SoundEventItem";
 import { Tag } from "@/components/Tag";
 import { theme } from "@/theme";
 import { useEcho, type SoundEvent } from "@/context/EchoContext";
-import { haptic } from "@/utils/format";
+import { clock, formatDurationMs, haptic, timeAgo } from "@/utils/format";
 import { api } from "@/services/api";
+import { loadListenLogs, type ListenSessionLog } from "@/utils/listenLogsStorage";
+import {
+  subscribeAmbientListenLogs,
+  bumpActiveSessionChunkCount,
+  bumpActiveSessionTasksAdded,
+  patchActiveAmbientSession,
+} from "@/utils/ambientSessionLifecycle";
 
 const DIRECTIONS: Array<SoundEvent["direction"]> = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 const CHUNK_MS = 5_000; // rolling chunk length
@@ -29,20 +36,36 @@ const HIGH_TIERS = new Set(["high", "emergency"]);
  * hook logic we already use in ConversationScreen, but inlined here because
  * we need very tight start/stop control for the loop.
  */
+function escapeRx(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export default function AmbientScreen() {
-  const { isListening, setIsListening, soundEvents, pushSoundEvent, clearEvents, userName, addAction } = useEcho();
+  const { isListening, setIsListening, soundEvents, pushSoundEvent, clearEvents, userName, ingestPersistedActions } = useEcho();
   const [direction, setDirection] = useState<SoundEvent["direction"]>("N");
   const [lastResult, setLastResult] = useState<string>("");
   const [chunkCount, setChunkCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [capturedFromAmbient, setCapturedFromAmbient] = useState<number>(0);
 
+  const [listenLogs, setListenLogs] = useState<ListenSessionLog[]>([]);
+  const [detailLog, setDetailLog] = useState<ListenSessionLog | null>(null);
+
   const stopFlagRef = useRef(false);
   const loopRef = useRef<Promise<void> | null>(null);
   /** Last ~6 chunk transcripts (~30s) so a name in one chunk + task in the next still extract. */
   const rollingTextsRef = useRef<string[]>([]);
-  const ambientExtractDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestAmbientCombinedRef = useRef("");
+
+  useEffect(() => {
+    const reload = () => loadListenLogs().then(setListenLogs);
+    reload();
+    return subscribeAmbientListenLogs(reload);
+  }, []);
+
+  useEffect(() => {
+    if (isListening) setChunkCount(0);
+  }, [isListening]);
 
   // Core loop — runs as a single async task while ambient mode is on.
   const runLoop = useCallback(async () => {
@@ -66,6 +89,7 @@ export default function AmbientScreen() {
         if (result?.top) {
           setLastResult(result.top.display);
           setChunkCount((c) => c + 1);
+          void bumpActiveSessionChunkCount();
           const dir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
           setDirection(dir);
 
@@ -76,13 +100,14 @@ export default function AmbientScreen() {
           const combined = rollingTextsRef.current.join(" ").replace(/\s+/g, " ").trim();
           latestAmbientCombinedRef.current = combined;
 
-          const nameRe = userName
-            ? new RegExp(`\\b${userName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i")
-            : null;
           const words = combined.split(/\s+/).filter(Boolean);
-          // Name can fall in chunk N and the actual ask in N+1 — require name in *combined* text, not only this chunk.
+          const nameRe = userName ? new RegExp(`\\b${escapeRx(userName)}\\b`, "i") : null;
+          const nameMentioned = Boolean(nameRe && combined.length >= 8 && nameRe.test(combined));
+          const youDirected = /\b(you|your|you'?re|you'?ll|you need to|need you to|for you to)\b/i.test(combined);
           const shouldTryExtract =
-            Boolean(userName && nameRe && words.length >= 3 && combined.length >= 6 && nameRe.test(combined));
+            (nameMentioned && combined.length >= 10 && words.length >= 3)
+            || (youDirected && combined.length >= 14 && words.length >= 4)
+            || (combined.length >= 22 && words.length >= 5);
 
           // Only render real (non-skipped) classifications in the event log.
           const skipEvent = ["silence", "speech"].includes(result.top.label);
@@ -100,59 +125,58 @@ export default function AmbientScreen() {
             else haptic.light();
           }
 
-          // Debounce: wait for speech to finish so we send one transcript with name + task across chunks.
+          // Extract as soon as transcript crosses the bar — no wait for recording to stop (each chunk may still add text).
           if (shouldTryExtract) {
-            if (ambientExtractDebounceRef.current) clearTimeout(ambientExtractDebounceRef.current);
-            ambientExtractDebounceRef.current = setTimeout(() => {
-              ambientExtractDebounceRef.current = null;
-              const transcript = latestAmbientCombinedRef.current;
-              if (!userName || !nameRe || !transcript || !nameRe.test(transcript)) return;
+            const transcript = latestAmbientCombinedRef.current;
+            if (transcript && transcript.length >= 10) {
               extractActionsFromAmbient(transcript, userName)
                 .then((persisted) => {
-                  if (persisted.length > 0) {
-                    persisted.forEach((a) =>
-                      addAction({
-                        type: a.type, title: a.title, detail: a.detail,
-                        when: a.when, sourceQuote: a.sourceQuote,
-                        priority: a.priority, confidence: a.confidence,
-                      }),
-                    );
-                    setCapturedFromAmbient((n) => n + persisted.length);
+                  if (persisted.length === 0) return;
+                  const added = ingestPersistedActions(persisted);
+                  if (added > 0) {
+                    setCapturedFromAmbient((n) => n + added);
                     haptic.success();
-                    rollingTextsRef.current = [];
+                    void bumpActiveSessionTasksAdded(added, transcript);
                   }
+                  rollingTextsRef.current = [];
                 })
                 .catch(() => { /* non-fatal */ });
-            }, 1600);
+            }
           }
         }
       } catch (e: any) {
-        setErrorMsg(e?.message || "Ambient loop error");
+        const msg = e?.message || "Ambient loop error";
+        setErrorMsg(msg);
+        void patchActiveAmbientSession({ error: msg });
         // brief cooldown on failure so we don't spin
         await sleep(1500);
       }
 
       await sleep(PAUSE_BETWEEN_MS);
     }
-  }, [pushSoundEvent, userName, addAction]);
+  }, [pushSoundEvent, userName, ingestPersistedActions]);
+
+  // Sync logs + recover mic loop when opening Listen after toggling ambient from Home.
+  useFocusEffect(
+    useCallback(() => {
+      loadListenLogs().then(setListenLogs);
+      if (isListening && !loopRef.current) {
+        loopRef.current = runLoop().finally(() => {
+          loopRef.current = null;
+        });
+      }
+    }, [isListening, runLoop]),
+  );
 
   useEffect(() => {
     if (isListening) {
       if (!loopRef.current) loopRef.current = runLoop().finally(() => { loopRef.current = null; });
     } else {
       stopFlagRef.current = true;
-      if (ambientExtractDebounceRef.current) {
-        clearTimeout(ambientExtractDebounceRef.current);
-        ambientExtractDebounceRef.current = null;
-      }
       rollingTextsRef.current = [];
     }
     return () => {
       stopFlagRef.current = true;
-      if (ambientExtractDebounceRef.current) {
-        clearTimeout(ambientExtractDebounceRef.current);
-        ambientExtractDebounceRef.current = null;
-      }
     };
   }, [isListening, runLoop]);
 
@@ -194,27 +218,30 @@ export default function AmbientScreen() {
         />
         <View style={{ padding: 18 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <View style={styles.radarWrap}>
-              <PulseRing size={120} color={theme.colors.accent} active={isListening} rings={3}>
-                <DirectionIndicator direction={direction || "N"} />
-              </PulseRing>
+            <View
+              style={[
+                styles.radarTile,
+                isListening ? styles.radarTileLive : styles.radarTileIdle,
+              ]}
+            >
+              <DirectionIndicator direction={direction || "N"} />
             </View>
 
             <View style={{ flex: 1, gap: 8 }}>
-              <Tag label="SPATIAL AWARENESS" color={theme.colors.accent} />
+              <Tag label="WHERE IT’S POINTING" color={theme.colors.accent} />
               <Text style={{ ...theme.type.title, color: theme.colors.text }}>
-                {isListening ? (lastResult || `Sampling ${CHUNK_MS / 1000}s chunks…`) : "Ambient muted"}
+                {isListening ? (lastResult || `Listening in ${CHUNK_MS / 1000}s slices…`) : "Listening off"}
               </Text>
               <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim }}>
                 {isListening
-                  ? `${chunkCount} chunk${chunkCount === 1 ? "" : "s"} analyzed · Whisper + GPT-4o-mini classification`
-                  : "Tap LIVE to start real ambient classification from your mic."}
+                  ? `${chunkCount} sound clip${chunkCount === 1 ? "" : "s"} checked so far`
+                  : "Tap LIVE here or resume on Home. Same listening session either place."}
               </Text>
               {capturedFromAmbient > 0 ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
                   <Ionicons name="sparkles" size={12} color={theme.colors.accent} />
                   <Text style={{ ...theme.type.label, color: theme.colors.accent }}>
-                    {capturedFromAmbient} task{capturedFromAmbient === 1 ? "" : "s"} auto-added when {userName} was heard
+                    {capturedFromAmbient} task{capturedFromAmbient === 1 ? "" : "s"} saved from what we heard (same as Talk)
                   </Text>
                 </View>
               ) : null}
@@ -236,6 +263,45 @@ export default function AmbientScreen() {
         <StatPill label="Logged"    count={byTier.low}       color={theme.colors.info} />
       </View>
 
+      <GlassCard style={{ marginTop: 16 }}>
+        <Text style={{ ...theme.type.label, color: theme.colors.accent }}>SESSION LOGS</Text>
+        <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 4 }}>
+          Each time listening starts (here or from Home), we open a session row. Pausing closes it. Newest at top. Tap a row for details.
+        </Text>
+        {listenLogs.length === 0 ? (
+          <Text style={{ ...theme.type.body, color: theme.colors.textMute, marginTop: 12, textAlign: "center" }}>
+            No sessions yet. Start listening once to create your first entry.
+          </Text>
+        ) : (
+          [...listenLogs]
+            .sort((a, b) => b.startedAt - a.startedAt)
+            .map((log) => {
+              const dur = log.endedAt ? log.endedAt - log.startedAt : Date.now() - log.startedAt;
+              const open = !log.endedAt;
+              return (
+                <Pressable
+                  key={log.id}
+                  onPress={() => { setDetailLog(log); haptic.light(); }}
+                  style={styles.logRow}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ ...theme.type.label, color: theme.colors.accent }}>
+                      {open ? "Listening…" : "Session"} · {clock(log.startedAt)}
+                    </Text>
+                    <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 4 }}>
+                      {open ? "In progress" : formatDurationMs(dur)} · {log.chunkCount} chunk{log.chunkCount === 1 ? "" : "s"} · {log.tasksAdded} task{log.tasksAdded === 1 ? "" : "s"}
+                    </Text>
+                    <Text style={{ ...theme.type.bodySm, color: theme.colors.textMute, marginTop: 2 }}>
+                      Started {timeAgo(log.startedAt)}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.textMute} />
+                </Pressable>
+              );
+            })
+        )}
+      </GlassCard>
+
       <SectionHeader
         eyebrow="Event log"
         title={`${soundEvents.length} detections`}
@@ -250,13 +316,70 @@ export default function AmbientScreen() {
           <View style={{ alignItems: "center", paddingVertical: 20 }}>
             <MaterialCommunityIcons name="waveform" size={40} color={theme.colors.textMute} />
             <Text style={{ ...theme.type.body, color: theme.colors.textDim, marginTop: 10, textAlign: "center" }}>
-              Silence for now. Real-world events will appear here as ECHO picks them up.
+              Quiet for now. Sounds we recognize will show up here as they happen.
             </Text>
           </View>
         </GlassCard>
       ) : (
         soundEvents.map((e) => <SoundEventItem key={e.id} event={e} />)
       )}
+
+      <Modal visible={!!detailLog} transparent animationType="fade" onRequestClose={() => setDetailLog(null)}>
+        <Pressable style={styles.modalBg} onPress={() => setDetailLog(null)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            {detailLog ? (
+              <>
+                <Text style={{ ...theme.type.label, color: theme.colors.accent }}>SESSION DETAIL</Text>
+                <Text style={{ ...theme.type.title, color: theme.colors.text, marginTop: 8 }}>
+                  Listening started {clock(detailLog.startedAt)}
+                </Text>
+                <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 6 }}>
+                  {detailLog.endedAt
+                    ? `Stopped ${clock(detailLog.endedAt)} · ${formatDurationMs(detailLog.endedAt - detailLog.startedAt)}`
+                    : "Still listening. Session ends when you pause."}
+                </Text>
+                <Text style={{ ...theme.type.bodySm, color: theme.colors.textMute, marginTop: 4 }}>
+                  Relative start: {timeAgo(detailLog.startedAt)}
+                </Text>
+                <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.outlineSoft }}>
+                  <Text style={{ ...theme.type.label, color: theme.colors.textDim }}>STATS</Text>
+                  <Text style={{ ...theme.type.body, color: theme.colors.text, marginTop: 6 }}>
+                    Chunks analyzed: {detailLog.chunkCount}
+                  </Text>
+                  <Text style={{ ...theme.type.body, color: theme.colors.text, marginTop: 4 }}>
+                    Tasks added to calendar: {detailLog.tasksAdded}
+                  </Text>
+                  {detailLog.error ? (
+                    <Text style={{ ...theme.type.bodySm, color: theme.colors.danger, marginTop: 8 }}>
+                      Error: {detailLog.error}
+                    </Text>
+                  ) : null}
+                </View>
+                {detailLog.lastSnippet ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={{ ...theme.type.label, color: theme.colors.textDim }}>LAST TRANSCRIPT SNIPPET</Text>
+                    <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 6, fontStyle: "italic" }}>
+                      {detailLog.lastSnippet}
+                    </Text>
+                  </View>
+                ) : null}
+                <Pressable
+                  onPress={() => setDetailLog(null)}
+                  style={{
+                    marginTop: 18,
+                    paddingVertical: 12,
+                    borderRadius: theme.radius.md,
+                    backgroundColor: theme.colors.accent,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ ...theme.type.label, color: "#07080F" }}>Close</Text>
+                </Pressable>
+              </>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -346,7 +469,8 @@ async function extractActionsFromAmbient(transcript: string, userName: string) {
     const { persisted } = await api.extractActions({
       transcript,
       userName,
-      context: "Heard in the background during ambient listening",
+      context:
+        "Rolling ambient transcript. Extract tasks for this user when their name is used OR when someone assigns work using 'you/your'. Put dated items on calendar with ISO when (tomorrow, next week, etc.).",
       persist: true,
     });
     return Array.isArray(persisted)
@@ -386,7 +510,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: theme.radius.pill,
   },
-  radarWrap: { width: 120, height: 120, alignItems: "center", justifyContent: "center" },
+  radarTile: {
+    width: 104,
+    paddingVertical: 10,
+    borderRadius: theme.radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  radarTileLive: {
+    borderColor: theme.colors.accent + "88",
+    backgroundColor: theme.colors.accent + "14",
+  },
+  radarTileIdle: {
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
   statRow: { flexDirection: "row", gap: 8, marginTop: 16 },
   statPill: {
     flex: 1, padding: 12,
@@ -396,4 +535,32 @@ const styles = StyleSheet.create({
   },
   statCount: { ...theme.type.title },
   statLabel: { ...theme.type.label, color: theme.colors.textDim, marginTop: 2, fontSize: 9 },
+
+  logRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: theme.radius.md,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1,
+    borderColor: theme.colors.outlineSoft,
+  },
+  modalBg: {
+    flex: 1,
+    backgroundColor: "rgba(5,6,16,0.78)",
+    justifyContent: "center",
+    padding: 22,
+  },
+  modalCard: {
+    borderRadius: theme.radius.xl,
+    padding: 20,
+    backgroundColor: "#121530",
+    borderWidth: 1,
+    borderColor: theme.colors.outlineSoft,
+    maxWidth: 420,
+    alignSelf: "center",
+    width: "100%",
+  },
 });

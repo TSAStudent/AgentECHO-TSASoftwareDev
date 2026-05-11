@@ -19,7 +19,7 @@ import { getOpenAI, hasOpenAI } from "./openaiClient.js";
  */
 
 const CATALOG = [
-  { label: "smoke_alarm",      display: "Smoke alarm",      tier: "emergency", icon: "flame" },
+  { label: "smoke_alarm",      display: "Smoke / danger alarm", tier: "emergency", icon: "flame" },
   { label: "glass_breaking",   display: "Glass breaking",   tier: "emergency", icon: "triangle-alert" },
   { label: "scream",           display: "Scream / help",    tier: "emergency", icon: "megaphone" },
   { label: "baby_crying",      display: "Baby crying",      tier: "high",      icon: "baby" },
@@ -41,8 +41,9 @@ const WHISPER_PROMPT = [
   "This is a short ambient audio clip from a home environment.",
   "Transcribe any speech verbatim.",
   "If non-speech sounds are present, describe them in square brackets — for example:",
-  "[doorbell ringing], [smoke alarm beeping], [dog barking], [glass breaking],",
+  "[doorbell ringing], [smoke alarm beeping], [fire alarm], [carbon monoxide alarm], [dog barking], [glass breaking],",
   "[baby crying], [phone ringing], [microwave beeping], [siren], [knocking], [water running], [scream].",
+  "Electronic smoke detectors often produce loud repetitive beeps; describe those as [smoke alarm beeping] even if you cannot hear speech.",
   "If the clip is silent, return an empty string.",
 ].join(" ");
 
@@ -75,9 +76,13 @@ export async function classifySound(buffer, { userName, filename = "chunk.m4a" }
     const keyword = keywordMatch(text, userName);
     if (keyword) return keyword;
 
+    // ----- 2b. Alarm / danger cues without brackets (Whisper often hallucinates short nonsense on tonal alarms) -----
+    const alarmHint = transcriptAlarmHints(text);
+    if (alarmHint) return alarmHint;
+
     // ----- 3. LLM classification of the transcript -----
     const classification = await classifyTranscript(openai, text);
-    return classification;
+    return postCorrectAlarmMislabels(text, classification);
   } catch (err) {
     console.error("[soundClassifier]", err.message);
     return demoBySize(buffer);
@@ -115,9 +120,57 @@ function keywordMatch(text, userName) {
   return null;
 }
 
+function transcriptAlarmHints(text) {
+  const raw = (text || "").trim();
+  const lower = raw.toLowerCase().replace(/\[[^\]]*\]/g, " ");
+  const compact = lower.replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+
+  if (
+    /\b(smoke|fire)\s*(alarm|detector)|carbon\s*monoxide|co\s*alarm|alarm\s*(sound|going|beep)|detector\s*beep|smoke\s*detector\b/i.test(
+      compact,
+    )
+  ) {
+    return makeResult("smoke_alarm", 0.93, { text: raw, via: "alarm_phrase" });
+  }
+
+  if ((compact.match(/\bbeep\b/g) || []).length >= 2) {
+    return makeResult("smoke_alarm", 0.82, { text: raw, via: "repeated_beep" });
+  }
+
+  // Single-word / tiny hallucinations common when the mic hears repetitive alarm tones
+  if (raw.length <= 36 && /^\s*[A-Za-z]+\.?\s*$/.test(raw)) {
+    const w = compact.split(/\s+/)[0] || "";
+    const alarmGibberish = /^(cream|clean|green|theme|team|stream|dream|alarm)$/i;
+    if (alarmGibberish.test(w)) {
+      return makeResult("smoke_alarm", 0.74, { text: raw, via: "alarm_tone_word_guess" });
+    }
+  }
+
+  return null;
+}
+
+function postCorrectAlarmMislabels(text, classification) {
+  const raw = (text || "").trim();
+  const lower = raw.toLowerCase();
+  const label = classification?.top?.label;
+  if (label !== "speech" && label !== "silence") return classification;
+
+  if (
+    /\b(smoke|fire)\s*(alarm|detector)|carbon\s*monoxide|co\s*alarm\b/i.test(lower)
+    || (raw.length <= 40 && /^(cream|clean|green|theme|team|stream|dream|alarm)\.?$/i.test(raw.trim()))
+  ) {
+    return makeResult("smoke_alarm", Math.max(0.62, classification.top.confidence || 0.62), {
+      text: raw,
+      via: "post_correct_smoke",
+      reason: "rescued_from_speech_or_noise",
+    });
+  }
+  return classification;
+}
+
 function bracketToLabel(b) {
   const s = b.toLowerCase();
-  if (/smoke|fire alarm/.test(s)) return "smoke_alarm";
+  if (/smoke|fire\s*alarm|carbon|co\s*alarm|detector/.test(s)) return "smoke_alarm";
   if (/glass|shatter/.test(s)) return "glass_breaking";
   if (/scream|yell|shout/.test(s)) return "scream";
   if (/baby|crying/.test(s)) return "baby_crying";
@@ -148,6 +201,8 @@ async function classifyTranscript(openai, text) {
           "Rules:",
           "- If it's a plain conversation, use 'speech'.",
           "- If it's mostly noise or you're unsure, use 'silence'.",
+          "- Short nonsense words (cream, theme, dream, etc.) with NO dialogue often mean a repetitive smoke/fire/CO detector tone was misheard: prefer 'smoke_alarm'.",
+          "- Words like smoke alarm, fire alarm, detector beeping, carbon monoxide, CO alarm → 'smoke_alarm'.",
           "- Respond JSON: {\"label\":\"<label>\", \"confidence\":0.0-1.0, \"reason\":\"<short>\"}",
         ].join("\n"),
       },

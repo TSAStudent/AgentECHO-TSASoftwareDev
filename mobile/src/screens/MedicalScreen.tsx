@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import type { CapturedActionDTO } from "@/services/api";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -17,7 +18,16 @@ type VisitPhase = "idle" | "recording" | "transcribing" | "summarizing" | "error
 
 export default function MedicalScreen() {
   const nav = useNavigation();
-  const { medications, userName, addMedication, takeMedication, removeMedication, addAction } = useEcho();
+  const {
+    medications,
+    userName,
+    addMedication,
+    takeMedication,
+    removeMedication,
+    ingestPersistedActions,
+    appendMedicalVisitLog,
+    medicalVisitLog,
+  } = useEcho();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ name: "", schedule: "", prescribedBy: "" });
   const { status: recStatus, start, stop, durationMs } = useAudioRecorder();
@@ -53,18 +63,50 @@ export default function MedicalScreen() {
       // Two parallel extractions: structured meeting-style summary + smart actions
       const [summary, extracted] = await Promise.all([
         api.summarize({ transcript: text, kind: "meeting", save: true, transcriptId: tr.savedTranscriptId || null }),
-        api.extractActions({ transcript: text, userName, context: "Medical visit", persist: true }),
+        api.extractActions({
+          transcript: text,
+          userName,
+          context: "Medical visit appointment companion clinical",
+          persist: true,
+        }),
       ]);
       setVisitSummary(summary);
-      if (Array.isArray(extracted?.persisted)) {
-        extracted.persisted.forEach((a: any) =>
-          addAction({
-            type: a.type, title: a.title, detail: a.detail,
-            when: a.when, sourceQuote: a.sourceQuote,
-            priority: a.priority, confidence: a.confidence,
-          }),
-        );
+
+      const persisted = (Array.isArray(extracted?.persisted) ? extracted.persisted : []) as CapturedActionDTO[];
+      ingestPersistedActions(persisted);
+
+      const existingMedNames = new Set(medications.map((m) => normalizeMedName(m.name)));
+      const medsAdded: string[] = [];
+      for (const row of persisted) {
+        if (row.type !== "medication" || !String(row.title || "").trim()) continue;
+        const nn = normalizeMedName(String(row.title));
+        if (existingMedNames.has(nn)) continue;
+        existingMedNames.add(nn);
+        const nextMs = parseWhenMs(row.when) ?? defaultNextDoseMs();
+        addMedication({
+          name: String(row.title).trim(),
+          schedule: String(row.detail || "As prescribed").trim() || "As prescribed",
+          prescribedBy: null,
+          nextDose: nextMs,
+          active: true,
+        });
+        medsAdded.push(String(row.title).trim());
       }
+
+      const labsScheduled = persisted
+        .filter((r) => isLabOrImagingCalendar(r))
+        .map((r) => String(r.title).trim())
+        .filter(Boolean);
+
+      appendMedicalVisitLog({
+        createdAt: Date.now(),
+        summaryTitle: summary?.title,
+        summaryTldr: summary?.tldr,
+        medsAdded,
+        labsScheduled,
+        transcriptPreview: text.slice(0, 280),
+      });
+
       setVisitPhase("idle");
       haptic.success();
     } catch (err: any) {
@@ -75,11 +117,11 @@ export default function MedicalScreen() {
 
   const phaseLabel = (() => {
     switch (visitPhase) {
-      case "recording":    return `RECORDING · ${(durationMs / 1000).toFixed(1)}s — tap to stop`;
+      case "recording":    return `Recording ${(durationMs / 1000).toFixed(1)}s · tap stop when done`;
       case "transcribing": return "TRANSCRIBING…";
       case "summarizing":  return "EXTRACTING MEDS & FOLLOW-UPS…";
-      case "error":        return `ERROR — ${visitError}`;
-      default:             return "TAP TO RECORD — stays on-device until you stop.";
+      case "error":        return `Error: ${visitError}`;
+      default:             return "Tap to record. Audio stays on this phone until you stop.";
     }
   })();
 
@@ -123,7 +165,7 @@ export default function MedicalScreen() {
             <View style={{ flex: 1 }}>
               <Text style={{ ...theme.type.title, color: theme.colors.text }}>Record with consent</Text>
               <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 2 }}>
-                Whisper + GPT-4o extract meds, follow-ups, and action items straight to your home screen.
+                After you stop, we transcribe the visit, add prescriptions into your list below, push labs and doses onto your Home calendar when dates are mentioned, and keep a visit log on this page.
               </Text>
             </View>
           </View>
@@ -230,24 +272,59 @@ export default function MedicalScreen() {
         ))
       )}
 
-      <SectionHeader eyebrow="Follow-ups" title="On your calendar" />
-      <GlassCard intensity="low">
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Ionicons name="calendar" size={22} color={theme.colors.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ ...theme.type.h3, color: theme.colors.text }}>Lab work in 2 weeks</Text>
-            <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 2 }}>
-              Reminder set for 24h before.
+      <SectionHeader eyebrow="Appointment companion" title="Visit log" />
+      {medicalVisitLog.length === 0 ? (
+        <GlassCard intensity="low">
+          <Text style={{ ...theme.type.body, color: theme.colors.textDim }}>
+            No visits logged yet. Each recording adds a row here with meds we absorbed and labs we placed on your Home calendar (week strip).
+          </Text>
+        </GlassCard>
+      ) : (
+        medicalVisitLog.slice(0, 12).map((entry) => (
+          <GlassCard key={entry.id} intensity="low" style={{ marginBottom: 10 }}>
+            <Text style={{ ...theme.type.label, color: theme.colors.textMute }}>
+              {new Date(entry.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
             </Text>
-          </View>
-        </View>
-      </GlassCard>
+            {entry.summaryTitle ? (
+              <Text style={{ ...theme.type.h3, color: theme.colors.text, marginTop: 4 }}>{entry.summaryTitle}</Text>
+            ) : null}
+            {entry.summaryTldr ? (
+              <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 4 }}>{entry.summaryTldr}</Text>
+            ) : null}
+            {entry.medsAdded.length > 0 ? (
+              <View style={{ marginTop: 10 }}>
+                <Text style={{ ...theme.type.label, color: theme.colors.warning }}>MEDS ADDED TO LIST</Text>
+                <Text style={{ ...theme.type.body, color: theme.colors.text, marginTop: 4 }}>
+                  {entry.medsAdded.join(" · ")}
+                </Text>
+              </View>
+            ) : entry.labsScheduled.length === 0 ? (
+              <Text style={{ ...theme.type.bodySm, color: theme.colors.textMute, marginTop: 8 }}>
+                No new prescriptions or labs extracted from this recording.
+              </Text>
+            ) : null}
+            {entry.labsScheduled.length > 0 ? (
+              <View style={{ marginTop: 10 }}>
+                <Text style={{ ...theme.type.label, color: theme.colors.primary }}>LABS / IMAGING → CALENDAR</Text>
+                <Text style={{ ...theme.type.body, color: theme.colors.text, marginTop: 4 }}>
+                  {entry.labsScheduled.join(" · ")}
+                </Text>
+              </View>
+            ) : null}
+            {entry.transcriptPreview ? (
+              <Text style={{ ...theme.type.bodySm, color: theme.colors.textMute, marginTop: 10, fontStyle: "italic" }} numberOfLines={3}>
+                “{entry.transcriptPreview}
+                {entry.transcriptPreview.length >= 280 ? "…" : ""}”
+              </Text>
+            ) : null}
+          </GlassCard>
+        ))
+      )}
 
-      <SectionHeader eyebrow="Two-way mode" title="Medical glossary translator" />
+      <SectionHeader eyebrow="Two-way mode" title="Medical wording helper" />
       <GlassCard>
         <Text style={{ ...theme.type.body, color: theme.colors.textDim }}>
-          In-visit mode optimizes ASR + ASL translation for medical vocabulary — "hypertension",
-          "tachycardia", dosage units — so nothing gets lost between you and your provider.
+          Visit mode favors clinical phrases (“hypertension,” doses with units, “tachycardia”) so hard words don’t vanish between you and your clinician.
         </Text>
       </GlassCard>
 
@@ -294,6 +371,32 @@ export default function MedicalScreen() {
         </Pressable>
       </Modal>
     </Screen>
+  );
+}
+
+function normalizeMedName(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function parseWhenMs(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? null : t;
+}
+
+function defaultNextDoseMs(): number {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(9, 0, 0, 0);
+  return d.getTime();
+}
+
+function isLabOrImagingCalendar(row: { type?: string; title?: string }): boolean {
+  if (row.type !== "calendar" || !row.title?.trim()) return false;
+  const t = row.title.trim();
+  if (/^(lab|imaging):/i.test(t)) return true;
+  return /\b(lab work|blood work|fasting|panel|lab draw|cbc\b|cmp\b|bmp\b|a1c|lipid|urinalysis|cultures?|metabolic|draw\s+(labs|blood)|x-ray|ct\s*scan|\bmri\b|ultrasound)\b/i.test(
+    t,
   );
 }
 

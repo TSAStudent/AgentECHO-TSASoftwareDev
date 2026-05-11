@@ -70,7 +70,7 @@ export default function EmergencyScreen() {
         setStatus(res.reason || "Demo preview generated.");
       }
     } catch {
-      setStatus("Could not reach backend — demo preview shown.");
+      setStatus("Could not reach backend. Showing a demo preview.");
     } finally {
       cancelHold();
     }
@@ -196,8 +196,8 @@ export default function EmergencyScreen() {
         <View style={{ flexDirection: "row", gap: 10 }}>
           <Ionicons name="map" size={24} color={theme.colors.cyan} />
           <Text style={{ ...theme.type.body, color: theme.colors.textDim, flex: 1 }}>
-            On trains, planes, and in airports, ECHO listens for PA announcements and pushes gate
-            changes, delays, and evacuation orders with live maps — even if you can't hear them.
+            On trains, planes, and in airports we listen for PA announcements and surface gate changes,
+            delays, and evacuations on a map, even when audio is hard to hear.
           </Text>
         </View>
       </GlassCard>

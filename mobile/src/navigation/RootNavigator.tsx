@@ -15,6 +15,8 @@ import ClassroomScreen from "@/screens/ClassroomScreen";
 import MedicalScreen from "@/screens/MedicalScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import OnboardingScreen from "@/screens/OnboardingScreen";
+import { AmbientAlertOverlay } from "@/components/AmbientAlertOverlay";
+import { rootNavigationRef } from "@/navigation/rootNavigationRef";
 import { theme } from "@/theme";
 
 const Tab = createBottomTabNavigator();
@@ -53,7 +55,9 @@ const TabBarBg = () => (
 function Tabs() {
   return (
     <Tab.Navigator
+      // Listen must stay mounted so the ambient mic loop runs when toggled from Home.
       screenOptions={({ route }) => ({
+        lazy: false,
         headerShown: false,
         tabBarShowLabel: true,
         tabBarActiveTintColor: theme.colors.text,
@@ -98,14 +102,17 @@ function Tabs() {
 
 export default function RootNavigator() {
   return (
-    <NavigationContainer theme={navTheme}>
-      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.bg } }}>
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen name="Main" component={Tabs} />
-        <Stack.Screen name="Classroom" component={ClassroomScreen} options={{ presentation: "card" }} />
-        <Stack.Screen name="Medical" component={MedicalScreen} options={{ presentation: "card" }} />
-        <Stack.Screen name="Settings" component={SettingsScreen} options={{ presentation: "card" }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={{ flex: 1 }}>
+      <NavigationContainer ref={rootNavigationRef} theme={navTheme} style={{ flex: 1 }}>
+        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.bg } }}>
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          <Stack.Screen name="Main" component={Tabs} />
+          <Stack.Screen name="Classroom" component={ClassroomScreen} options={{ presentation: "card" }} />
+          <Stack.Screen name="Medical" component={MedicalScreen} options={{ presentation: "card" }} />
+          <Stack.Screen name="Settings" component={SettingsScreen} options={{ presentation: "card" }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+      <AmbientAlertOverlay />
+    </View>
   );
 }

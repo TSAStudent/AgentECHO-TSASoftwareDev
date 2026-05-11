@@ -20,9 +20,11 @@ const iconFor = (type: CapturedAction["type"]) => {
 
 export const ActionCard: React.FC<{
   action: CapturedAction;
+  /** Strong title strikethrough + dimming when done (e.g. Home calendar strip). */
+  emphasizeCompletedStrike?: boolean;
   onToggle?: () => void;
   onSchedule?: () => void;
-}> = ({ action, onToggle, onSchedule }) => {
+}> = ({ action, emphasizeCompletedStrike, onToggle, onSchedule }) => {
   const icon = iconFor(action.type);
   const priorityColor =
     action.priority === "urgent" ? theme.colors.danger :
@@ -30,15 +32,25 @@ export const ActionCard: React.FC<{
     action.priority === "medium" ? theme.colors.accent  :
                                    theme.colors.info;
 
+  const strikeDone = emphasizeCompletedStrike && action.done;
+
   return (
-    <View style={[styles.card, { borderLeftColor: priorityColor }, action.done && { opacity: 0.55 }]}>
+    <View
+      style={[
+        styles.card,
+        { borderLeftColor: priorityColor },
+        action.done && { opacity: emphasizeCompletedStrike ? 0.5 : 0.55 },
+      ]}
+    >
       <View style={styles.head}>
         <View style={[styles.iconWrap, { backgroundColor: icon.color + "22", borderColor: icon.color + "66" }]}>
           <Ionicons name={icon.name as any} size={20} color={icon.color} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, action.done && { textDecorationLine: "line-through" }]}>{action.title}</Text>
-          <Text style={styles.meta}>
+          <Text style={[styles.title, strikeDone && styles.titleStrikeHeavy, action.done && !strikeDone && styles.titleStrikeSoft]}>
+            {action.title}
+          </Text>
+          <Text style={[styles.meta, strikeDone && styles.metaStrike]}>
             {action.type.toUpperCase()} · {timeAgo(action.createdAt)} · {Math.round(action.confidence * 100)}% sure
           </Text>
         </View>
@@ -51,12 +63,14 @@ export const ActionCard: React.FC<{
         </Pressable>
       </View>
 
-      {action.detail ? <Text style={styles.detail}>{action.detail}</Text> : null}
+      {action.detail ? (
+        <Text style={[styles.detail, strikeDone && styles.detailStrike]}>{action.detail}</Text>
+      ) : null}
 
       {action.sourceQuote ? (
         <View style={styles.quoteWrap}>
           <Ionicons name="ear" size={12} color={theme.colors.textMute} />
-          <Text style={styles.quote}>&ldquo;{action.sourceQuote}&rdquo;</Text>
+          <Text style={[styles.quote, strikeDone && styles.quoteStrike]}>&ldquo;{action.sourceQuote}&rdquo;</Text>
         </View>
       ) : null}
 
@@ -86,14 +100,39 @@ const styles = StyleSheet.create({
     borderWidth: 1, alignItems: "center", justifyContent: "center",
   },
   title: { ...theme.type.h3, color: theme.colors.text },
-  meta:  { ...theme.type.label, color: theme.colors.textMute, marginTop: 4 },
+  titleStrikeSoft: { textDecorationLine: "line-through", textDecorationStyle: "solid" },
+  titleStrikeHeavy: {
+    ...theme.type.title,
+    fontSize: 21,
+    lineHeight: 27,
+    color: theme.colors.textMute,
+    textDecorationLine: "line-through",
+    textDecorationStyle: "solid",
+  },
+  meta: { ...theme.type.label, color: theme.colors.textMute, marginTop: 4 },
+  metaStrike: {
+    textDecorationLine: "line-through",
+    textDecorationStyle: "solid",
+    color: theme.colors.textMute,
+    opacity: 0.85,
+  },
   detail: { ...theme.type.body, color: theme.colors.textDim, marginTop: 10 },
+  detailStrike: {
+    textDecorationLine: "line-through",
+    textDecorationStyle: "solid",
+    color: theme.colors.textMute,
+  },
   quoteWrap: {
     flexDirection: "row", alignItems: "flex-start", gap: 6,
     marginTop: 10, paddingTop: 10,
     borderTopWidth: 1, borderTopColor: theme.colors.outlineSoft,
   },
   quote: { ...theme.type.bodySm, color: theme.colors.textMute, fontStyle: "italic", flex: 1 },
+  quoteStrike: {
+    textDecorationLine: "line-through",
+    textDecorationStyle: "solid",
+    color: theme.colors.textMute,
+  },
   check: {
     width: 26, height: 26, borderRadius: 26,
     borderWidth: 1.5, borderColor: theme.colors.outline,

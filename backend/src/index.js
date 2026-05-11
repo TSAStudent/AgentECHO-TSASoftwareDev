@@ -6,6 +6,7 @@ import multer from "multer";
 import { store } from "./store.js";
 import { transcribeAudio } from "./services/transcribe.js";
 import { extractSmartActions } from "./services/smartActions.js";
+import { hasDuplicatePending } from "./utils/actionDedupe.js";
 import { classifySound } from "./services/soundClassifier.js";
 import { summarizeLecture } from "./services/summarize.js";
 import { recognizeSign } from "./services/aslVision.js";
@@ -127,21 +128,28 @@ app.post("/api/extract-actions", async (req, res) => {
     const actions = await extractSmartActions({ transcript, userName: name, context });
     let persisted = [];
     if (shouldPersist && Array.isArray(actions)) {
-      persisted = actions
-        .filter((a) => a?.title && (a.confidence ?? 1) >= 0.55)
-        .map((a) =>
-          store.insert("actions", {
-            type: a.type || "note",
-            title: a.title,
-            detail: a.detail || "",
-            when: a.when ?? null,
-            sourceQuote: a.sourceQuote || "",
-            priority: a.priority || "medium",
-            confidence: a.confidence ?? 0.8,
-            createdAt: Date.now(),
-            done: false,
-          }),
-        );
+      const existing = store.list("actions");
+      const pendingPool = [...existing.filter((x) => !x.done)];
+      for (const a of actions) {
+        if (!a?.title || (a.confidence ?? 1) < 0.55) continue;
+        const candidate = {
+          type: a.type || "note",
+          title: a.title,
+          detail: a.detail || "",
+          when: a.when ?? null,
+        };
+        if (hasDuplicatePending(pendingPool, candidate)) continue;
+        const row = store.insert("actions", {
+          ...candidate,
+          sourceQuote: a.sourceQuote || "",
+          priority: a.priority || "medium",
+          confidence: a.confidence ?? 0.8,
+          createdAt: Date.now(),
+          done: false,
+        });
+        pendingPool.push(row);
+        persisted.push(row);
+      }
     }
     res.json({ actions, persisted });
   } catch (err) {
@@ -241,9 +249,9 @@ app.post("/api/vibe-report", async (req, res) => {
 // 7. Text -> speech.
 app.post("/api/tts", async (req, res) => {
   try {
-    const { text, voice } = req.body || {};
+    const { text, voice, speed } = req.body || {};
     if (!text) return res.status(400).json({ error: "text required" });
-    const { audioBase64, mime } = await ttsFromText({ text, voice });
+    const { audioBase64, mime } = await ttsFromText({ text, voice, speed });
     res.json({ audioBase64, mime });
   } catch (err) {
     console.error("[/api/tts]", err);

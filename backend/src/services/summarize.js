@@ -1,5 +1,8 @@
 import { getOpenAI, hasOpenAI } from "./openaiClient.js";
 
+/** Avoid giant prompts that stall or fail; keep start + end of lecture. */
+const MAX_TRANSCRIPT_CHARS = 48_000;
+
 const SYSTEM_LECTURE = `You are Agent ECHO's lecture companion. Given a raw lecture transcript, produce structured notes
 for a deaf / hard-of-hearing student who may have missed audio nuance. STRICT JSON:
 {
@@ -9,7 +12,8 @@ for a deaf / hard-of-hearing student who may have missed audio nuance. STRICT JS
   "keyTerms": [{"term":"...","definition":"..."}],
   "actionItems": ["..."],
   "flashcards": [{"q":"...","a":"..."}]
-}`;
+}
+Constraints: at most 8 outline sections; at most 10 bullets per section; at most 12 key terms; at most 12 flashcards.`;
 
 const SYSTEM_MEETING = `You are Agent ECHO's meeting assistant. Produce JSON:
 {
@@ -19,27 +23,71 @@ const SYSTEM_MEETING = `You are Agent ECHO's meeting assistant. Produce JSON:
   "actionItems":[{"owner":"name or 'you'","task":"...","due":"ISO or null"}],
   "questionsForYou":["..."],
   "followUpEmailDraft":"short plain-text email draft"
-}`;
+}
+Constraints: at most 12 decisions; at most 15 action items.`;
+
+function clipTranscriptForSummary(raw) {
+  const t = (raw || "").trim();
+  if (!t.length) return t;
+  if (t.length <= MAX_TRANSCRIPT_CHARS) return t;
+  const head = Math.floor(MAX_TRANSCRIPT_CHARS * 0.62);
+  const tail = MAX_TRANSCRIPT_CHARS - head - 120;
+  const omitted = t.length - head - tail;
+  return `${t.slice(0, head)}\n\n[ … middle omitted (${omitted} characters) … ]\n\n${t.slice(-tail)}`;
+}
+
+function normalizeLectureSummary(parsed) {
+  const p = parsed && typeof parsed === "object" ? parsed : {};
+  return {
+    title: typeof p.title === "string" && p.title.trim() ? p.title.trim() : "Lecture notes",
+    tldr: typeof p.tldr === "string" ? p.tldr : "",
+    outline: Array.isArray(p.outline) ? p.outline : [],
+    keyTerms: Array.isArray(p.keyTerms) ? p.keyTerms : [],
+    actionItems: Array.isArray(p.actionItems) ? p.actionItems : [],
+    flashcards: Array.isArray(p.flashcards) ? p.flashcards : [],
+  };
+}
+
+function normalizeMeetingSummary(parsed) {
+  const p = parsed && typeof parsed === "object" ? parsed : {};
+  return {
+    title: typeof p.title === "string" && p.title.trim() ? p.title.trim() : "Meeting notes",
+    tldr: typeof p.tldr === "string" ? p.tldr : "",
+    decisions: Array.isArray(p.decisions) ? p.decisions : [],
+    actionItems: Array.isArray(p.actionItems) ? p.actionItems : [],
+    questionsForYou: Array.isArray(p.questionsForYou) ? p.questionsForYou : [],
+    followUpEmailDraft: typeof p.followUpEmailDraft === "string" ? p.followUpEmailDraft : "",
+  };
+}
 
 export async function summarizeLecture({ transcript, kind }) {
-  if (!hasOpenAI()) return demoSummary(kind);
+  const clipped = clipTranscriptForSummary(transcript);
+  const k = kind === "meeting" ? "meeting" : "lecture";
+
+  if (!hasOpenAI()) {
+    return k === "meeting" ? normalizeMeetingSummary(demoSummary(k)) : normalizeLectureSummary(demoSummary(k));
+  }
 
   const openai = getOpenAI();
-  const sys = kind === "meeting" ? SYSTEM_MEETING : SYSTEM_LECTURE;
+  const sys = k === "meeting" ? SYSTEM_MEETING : SYSTEM_LECTURE;
 
   const resp = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     temperature: 0.3,
+    max_tokens: 4096,
     messages: [
       { role: "system", content: sys },
-      { role: "user", content: transcript },
+      { role: "user", content: clipped },
     ],
   });
+
+  const raw = resp.choices?.[0]?.message?.content;
   try {
-    return JSON.parse(resp.choices[0].message.content);
+    const parsed = JSON.parse(raw || "{}");
+    return k === "meeting" ? normalizeMeetingSummary(parsed) : normalizeLectureSummary(parsed);
   } catch {
-    return demoSummary(kind);
+    return k === "meeting" ? normalizeMeetingSummary(demoSummary(k)) : normalizeLectureSummary(demoSummary(k));
   }
 }
 

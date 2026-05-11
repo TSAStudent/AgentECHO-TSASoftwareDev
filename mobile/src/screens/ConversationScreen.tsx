@@ -38,7 +38,7 @@ const emotionColor = (e?: Line["emotion"]) => {
 };
 
 export default function ConversationScreen() {
-  const { userName, addAction } = useEcho();
+  const { userName, ingestPersistedActions } = useEcho();
   const [lines, setLines] = useState<Line[]>([]);
   const [live, setLive] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -135,16 +135,9 @@ export default function ConversationScreen() {
         context: "Captured from live conversation",
         persist: true,
       });
-      if (Array.isArray(persisted)) {
-        persisted.forEach((a: any) => {
-          addAction({
-            type: a.type, title: a.title, detail: a.detail,
-            when: a.when, sourceQuote: a.sourceQuote,
-            priority: a.priority, confidence: a.confidence,
-          });
-        });
-      }
-      haptic.success();
+      const added = Array.isArray(persisted) ? ingestPersistedActions(persisted) : 0;
+      if (added > 0) haptic.success();
+      else haptic.light();
     } catch {
       haptic.warning();
     } finally {
@@ -164,7 +157,7 @@ export default function ConversationScreen() {
   }, [lines.length]);
 
   const statusLabel = useMemo(() => {
-    if (error) return `ERROR — ${error}`;
+    if (error) return `Error: ${error}`;
     if (live)  return `LIVE · ${fmtDuration(elapsed)} · ${chunkCount} chunk${chunkCount === 1 ? "" : "s"} transcribed`;
     if (processing) return "FINISHING LAST CHUNK…";
     if (lines.length === 0) return "TAP MIC TO START LIVE CAPTIONS";
@@ -220,8 +213,9 @@ export default function ConversationScreen() {
         {lines.length === 0 ? (
           <GlassCard intensity="low">
             <Text style={{ ...theme.type.body, color: theme.colors.textDim, textAlign: "center" }}>
-              Tap the microphone and speak — ECHO will stream captions as you go, label speakers,
-              and infer emotion. Anything said to {userName} gets highlighted.
+              Tap the mic to start. You’ll see captions roll in with speakers and tone hints. Lines meant for{" "}
+              {userName} stand out. When you’re ready, tap{" "}
+              <Text style={{ color: theme.colors.accent }}>Capture actions</Text> to save tasks. We don’t add anything until you tap.
             </Text>
           </GlassCard>
         ) : null}

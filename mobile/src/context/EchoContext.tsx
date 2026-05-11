@@ -1,6 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/services/api";
+import { onAmbientListeningEdge } from "@/utils/ambientSessionLifecycle";
+import { hasDuplicatePending } from "@/utils/actionDedupe";
+import { ambientBannerFromSound } from "@/utils/ambientSoundBanner";
+import type { AmbientBanner } from "@/utils/ambientSoundBanner";
+
+export type { AmbientBanner } from "@/utils/ambientSoundBanner";
 
 export type SoundEvent = {
   id: string;
@@ -41,6 +47,17 @@ export type Medication = {
   createdAt?: number;
 };
 
+/** Local-only history of Appointment companion visits (not synced to backend yet). */
+export type MedicalVisitLogEntry = {
+  id: string;
+  createdAt: number;
+  summaryTitle?: string;
+  summaryTldr?: string;
+  medsAdded: string[];
+  labsScheduled: string[];
+  transcriptPreview: string;
+};
+
 type Preferences = {
   haptics: boolean;
   flashAlerts: boolean;
@@ -55,9 +72,12 @@ type EchoState = {
   nightMode: boolean;
   userName: string;
   soundEvents: SoundEvent[];
+  /** Immediate ambient classification banner (any tab). */
+  ambientBanner: AmbientBanner | null;
   actions: CapturedAction[];
   trustedCircle: TrustedContact[];
   medications: Medication[];
+  medicalVisitLog: MedicalVisitLogEntry[];
   preferences: Preferences;
   // lifecycle
   hydrating: boolean;
@@ -73,8 +93,12 @@ type EchoContextValue = EchoState & {
   pushSoundEvent: (e: Omit<SoundEvent, "id" | "timestamp">) => void;
   acknowledgeEvent: (id: string) => void;
   clearEvents: () => void;
+  dismissAmbientBanner: () => void;
 
-  addAction: (a: Omit<CapturedAction, "id" | "createdAt">) => void;
+  /** Returns false if an identical pending task already exists (same type, title, detail, when). */
+  addAction: (a: Omit<CapturedAction, "id" | "createdAt">) => boolean;
+  /** Rows already saved by POST /api/extract-actions — merges into state without a second POST. */
+  ingestPersistedActions: (items: ReadonlyArray<CapturedAction>) => number;
   toggleActionDone: (id: string) => void;
   removeAction: (id: string) => void;
 
@@ -85,6 +109,9 @@ type EchoContextValue = EchoState & {
   takeMedication: (id: string) => void;
   removeMedication: (id: string) => void;
 
+  /** Append one Appointment companion visit summary (persisted locally). */
+  appendMedicalVisitLog: (entry: Omit<MedicalVisitLogEntry, "id">) => void;
+
   setPreference: <K extends keyof Preferences>(k: K, v: Preferences[K]) => void;
 
   refresh: () => Promise<void>;
@@ -92,6 +119,23 @@ type EchoContextValue = EchoState & {
 
 const EchoContext = createContext<EchoContextValue | null>(null);
 const PREFS_CACHE_KEY = "echo_state_cache_v1";
+const MEDICAL_LOG_KEY = "echo_medical_visit_log_v1";
+
+const MAX_MEDICAL_VISIT_LOG = 40;
+
+function coerceMedicalLogEntry(raw: any): MedicalVisitLogEntry | null {
+  if (!raw || typeof raw.createdAt !== "number") return null;
+  const id = raw.id != null ? String(raw.id) : `mv_${raw.createdAt}`;
+  return {
+    id,
+    createdAt: raw.createdAt,
+    summaryTitle: raw.summaryTitle != null ? String(raw.summaryTitle) : undefined,
+    summaryTldr: raw.summaryTldr != null ? String(raw.summaryTldr) : undefined,
+    medsAdded: Array.isArray(raw.medsAdded) ? raw.medsAdded.map(String) : [],
+    labsScheduled: Array.isArray(raw.labsScheduled) ? raw.labsScheduled.map(String) : [],
+    transcriptPreview: raw.transcriptPreview != null ? String(raw.transcriptPreview) : "",
+  };
+}
 
 // -------- Fallback seeds (used only when backend is unreachable AND no cache) --------
 const seedEvents = (): SoundEvent[] => [
@@ -100,7 +144,7 @@ const seedEvents = (): SoundEvent[] => [
   { id: "e3", label: "name_called",    display: "Your name called", tier: "high",   icon: "user",       confidence: 0.81, timestamp: Date.now() - 1000 * 60 * 37, room: "Living room",  direction: "W" },
 ];
 const seedActions = (): CapturedAction[] => [
-  { id: "a1", type: "calendar", title: "Dentist — Thursday 3:00 PM", detail: "Overheard reminder.", when: null, sourceQuote: "Hey Sarah, don't forget your dentist appointment Thursday at 3.", priority: "medium", confidence: 0.92, createdAt: Date.now() - 1000 * 60 * 60 * 3 },
+  { id: "a1", type: "calendar", title: "Dentist, Thu 3:00 PM", detail: "Overheard reminder.", when: null, sourceQuote: "Hey Sarah, don't forget your dentist appointment Thursday at 3.", priority: "medium", confidence: 0.92, createdAt: Date.now() - 1000 * 60 * 60 * 3 },
   { id: "a2", type: "shopping", title: "Milk on the way home",       detail: "Commitment overheard.", when: null, sourceQuote: "I'll pick up milk on the way home.", priority: "low", confidence: 0.78, createdAt: Date.now() - 1000 * 60 * 60 * 6 },
 ];
 const seedContacts = (): TrustedContact[] => [
@@ -121,15 +165,49 @@ const defaultPrefs = (): Preferences => ({
   retentionDays: 7,
 });
 
+function coerceCapturedAction(raw: any): CapturedAction | null {
+  if (!raw?.title || raw?.id == null) return null;
+  const id = String(raw.id);
+  return {
+    id,
+    type: raw.type || "note",
+    title: String(raw.title),
+    detail: String(raw.detail ?? ""),
+    when: raw.when ?? null,
+    sourceQuote: raw.sourceQuote != null ? String(raw.sourceQuote) : undefined,
+    priority: raw.priority || "medium",
+    confidence: typeof raw.confidence === "number" ? raw.confidence : 0.8,
+    createdAt: typeof raw.createdAt === "number" ? raw.createdAt : Date.now(),
+    done: Boolean(raw.done),
+  };
+}
+
+function mergePersistedInto(
+  prev: CapturedAction[],
+  rows: CapturedAction[],
+): { actions: CapturedAction[]; added: number } {
+  let next = [...prev];
+  let added = 0;
+  for (const a of rows) {
+    if (next.some((x) => x.id === a.id)) continue;
+    if (hasDuplicatePending(next, a)) continue;
+    next = [a, ...next];
+    added += 1;
+  }
+  return { actions: next, added };
+}
+
 export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<EchoState>(() => ({
     isListening: true,
     nightMode: false,
     userName: "Sarah",
     soundEvents: seedEvents(),
+    ambientBanner: null,
     actions: seedActions(),
     trustedCircle: seedContacts(),
     medications: seedMedications(),
+    medicalVisitLog: [],
     preferences: defaultPrefs(),
     hydrating: true,
     backendOnline: false,
@@ -141,6 +219,9 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  /** After user touches Listen/Home toggle, don't let async hydrate overwrite `isListening` (fixes Listen showing PAUSED). */
+  const listeningUserOverrideRef = useRef(false);
+
   // ---------- Hydration ----------
   const hydrate = useCallback(async () => {
     try {
@@ -148,7 +229,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setState((prev) => ({
         ...prev,
         userName:      snap.profile?.userName || prev.userName,
-        isListening:   Boolean(snap.preferences?.isListening),
+        isListening:   listeningUserOverrideRef.current ? prev.isListening : Boolean(snap.preferences?.isListening),
         nightMode:     Boolean(snap.preferences?.nightMode),
         soundEvents:   snap.events || [],
         actions:       snap.actions || [],
@@ -176,6 +257,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setState((prev) => ({
             ...prev,
             userName:      snap.profile?.userName || prev.userName,
+            isListening:   listeningUserOverrideRef.current ? prev.isListening : Boolean(snap.preferences?.isListening ?? prev.isListening),
             soundEvents:   snap.events || prev.soundEvents,
             actions:       snap.actions || prev.actions,
             trustedCircle: snap.contacts || prev.trustedCircle,
@@ -195,9 +277,30 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hydrate();
   }, [hydrate]);
 
+  useEffect(() => {
+    AsyncStorage.getItem(MEDICAL_LOG_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        try {
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return;
+          const rows = parsed.map(coerceMedicalLogEntry).filter(Boolean) as MedicalVisitLogEntry[];
+          rows.sort((a, b) => b.createdAt - a.createdAt);
+          setState((p) => ({ ...p, medicalVisitLog: rows.slice(0, MAX_MEDICAL_VISIT_LOG) }));
+        } catch {
+          /* ignore */
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // ---------- Listening / NightMode (persisted in preferences) ----------
   const setIsListening = useCallback((v: boolean) => {
-    setState((p) => ({ ...p, isListening: v }));
+    listeningUserOverrideRef.current = true;
+    setState((p) => {
+      if (p.isListening !== v) void onAmbientListeningEdge(p.isListening, v);
+      return { ...p, isListening: v };
+    });
     api.patchPreferences({ isListening: v }).catch(() => {});
   }, []);
 
@@ -213,13 +316,22 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // ---------- Sound events ----------
+  const dismissAmbientBanner = useCallback(() => {
+    setState((p) => ({ ...p, ambientBanner: null }));
+  }, []);
+
   const pushSoundEvent: EchoContextValue["pushSoundEvent"] = useCallback((e) => {
     const optimistic: SoundEvent = {
       ...e,
       id: `e_local_${Date.now()}`,
       timestamp: Date.now(),
     };
-    setState((p) => ({ ...p, soundEvents: [optimistic, ...p.soundEvents].slice(0, 200) }));
+    const banner = ambientBannerFromSound(e, optimistic.id);
+    setState((p) => ({
+      ...p,
+      soundEvents: [optimistic, ...p.soundEvents].slice(0, 200),
+      ...(banner ? { ambientBanner: banner } : {}),
+    }));
     // Reconcile with server id on success.
     api.addEvent({
       label: e.label, display: e.display, tier: e.tier, icon: e.icon,
@@ -243,22 +355,52 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const clearEvents = useCallback(() => {
-    setState((p) => ({ ...p, soundEvents: [] }));
+    setState((p) => ({ ...p, soundEvents: [], ambientBanner: null }));
     api.clearEvents().catch(() => {});
   }, []);
 
   // ---------- Actions ----------
   const addAction: EchoContextValue["addAction"] = useCallback((a) => {
+    if (hasDuplicatePending(stateRef.current.actions, a)) return false;
     const optimistic: CapturedAction = { ...a, id: `a_local_${Date.now()}`, createdAt: Date.now() };
     setState((p) => ({ ...p, actions: [optimistic, ...p.actions] }));
     api.addAction(a)
-      .then(({ action }) => {
+      .then((res) => {
+        if (res?.duplicate) {
+          setState((p) => ({ ...p, actions: p.actions.filter((x) => x.id !== optimistic.id) }));
+          api.listActions()
+            .then(({ actions: list }) => {
+              const rows = (list || []).map(coerceCapturedAction).filter(Boolean) as CapturedAction[];
+              rows.sort((x, y) => y.createdAt - x.createdAt);
+              setState((p) => ({ ...p, actions: rows }));
+            })
+            .catch(() => {});
+          return;
+        }
+        if (!res?.action) {
+          setState((p) => ({ ...p, actions: p.actions.filter((x) => x.id !== optimistic.id) }));
+          return;
+        }
+        const merged = coerceCapturedAction(res.action);
         setState((p) => ({
           ...p,
-          actions: p.actions.map((x) => (x.id === optimistic.id ? action : x)),
+          actions: p.actions.map((x) => (x.id === optimistic.id ? merged || res.action! : x)),
         }));
       })
       .catch(() => {});
+    return true;
+  }, []);
+
+  const ingestPersistedActions = useCallback((items: ReadonlyArray<CapturedAction>): number => {
+    const rows = items.map((raw: any) => coerceCapturedAction(raw)).filter(Boolean) as CapturedAction[];
+    if (!rows.length) return 0;
+    let added = 0;
+    setState((p) => {
+      const { actions: merged, added: n } = mergePersistedInto(p.actions, rows);
+      added = n;
+      return n ? { ...p, actions: merged } : p;
+    });
+    return added;
   }, []);
 
   const toggleActionDone = useCallback((id: string) => {
@@ -284,7 +426,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // id so we know it hasn't synced yet — future work can retry.
       const optimistic: TrustedContact = { ...c, id: `c_local_${Date.now()}` };
       setState((p) => ({ ...p, trustedCircle: [...p.trustedCircle, optimistic] }));
-      return { ok: false, error: err?.message || "Could not reach backend — saved locally." };
+      return { ok: false, error: err?.message || "Could not reach backend. Saved on this device." };
     }
   }, []);
 
@@ -331,6 +473,22 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     api.deleteMedication(id).catch(() => {});
   }, []);
 
+  const appendMedicalVisitLog = useCallback((entry: Omit<MedicalVisitLogEntry, "id">) => {
+    const row: MedicalVisitLogEntry = {
+      ...entry,
+      id: `mv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: entry.createdAt,
+      medsAdded: [...entry.medsAdded],
+      labsScheduled: [...entry.labsScheduled],
+      transcriptPreview: entry.transcriptPreview,
+    };
+    setState((p) => {
+      const next = [row, ...p.medicalVisitLog].slice(0, MAX_MEDICAL_VISIT_LOG);
+      AsyncStorage.setItem(MEDICAL_LOG_KEY, JSON.stringify(next)).catch(() => {});
+      return { ...p, medicalVisitLog: next };
+    });
+  }, []);
+
   // ---------- Preferences ----------
   const setPreference: EchoContextValue["setPreference"] = useCallback((k, v) => {
     setState((p) => ({ ...p, preferences: { ...p.preferences, [k]: v } }));
@@ -346,7 +504,9 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       pushSoundEvent,
       acknowledgeEvent,
       clearEvents,
+      dismissAmbientBanner,
       addAction,
+      ingestPersistedActions,
       toggleActionDone,
       removeAction,
       addContact,
@@ -354,16 +514,18 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addMedication,
       takeMedication,
       removeMedication,
+      appendMedicalVisitLog,
       setPreference,
       refresh: hydrate,
     }),
     [
       state,
       setIsListening, setNightMode, setUserName,
-      pushSoundEvent, acknowledgeEvent, clearEvents,
-      addAction, toggleActionDone, removeAction,
+      pushSoundEvent, acknowledgeEvent, clearEvents, dismissAmbientBanner,
+      addAction, ingestPersistedActions, toggleActionDone, removeAction,
       addContact, removeContact,
       addMedication, takeMedication, removeMedication,
+      appendMedicalVisitLog,
       setPreference, hydrate,
     ],
   );
