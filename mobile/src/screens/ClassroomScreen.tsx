@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import { Screen } from "@/components/Screen";
+import { HoverGrowPressable } from "@/components/HoverGrowPressable";
 import { GlassCard } from "@/components/GlassCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Tag } from "@/components/Tag";
@@ -138,9 +139,9 @@ export default function ClassroomScreen() {
   return (
     <Screen>
       <View style={styles.top}>
-        <Pressable onPress={() => nav.goBack()} style={styles.back}>
+        <HoverGrowPressable onPress={() => nav.goBack()} style={styles.back}>
           <Feather name="chevron-left" size={22} color={theme.colors.text} />
-        </Pressable>
+        </HoverGrowPressable>
         <Tag label="ECHO CLASSROOM" color={theme.colors.warning} />
       </View>
 
@@ -154,7 +155,7 @@ export default function ClassroomScreen() {
           { key: "lecture", label: "Lecture", icon: "school" },
           { key: "meeting", label: "Meeting", icon: "briefcase" },
         ].map((m) => (
-          <Pressable
+          <HoverGrowPressable
             key={m.key}
             onPress={() => {
               if (recording) return;
@@ -164,7 +165,7 @@ export default function ClassroomScreen() {
           >
             <Ionicons name={m.icon as any} size={16} color={mode === m.key ? "#07080F" : theme.colors.text} />
             <Text style={[styles.modeText, { color: mode === m.key ? "#07080F" : theme.colors.text }]}>{m.label}</Text>
-          </Pressable>
+          </HoverGrowPressable>
         ))}
       </View>
 
@@ -186,11 +187,15 @@ export default function ClassroomScreen() {
               : " shape meeting notes, decisions, tasks, and a short follow-up draft"}.
           </Text>
 
-          <Pressable onPress={onRecord} disabled={phase === "transcribing" || phase === "summarizing"} style={[
-            styles.runBtn,
-            recording && { backgroundColor: theme.colors.danger },
-            (phase === "transcribing" || phase === "summarizing") && { opacity: 0.7 },
-          ]}>
+          <HoverGrowPressable
+            onPress={onRecord}
+            disabled={phase === "transcribing" || phase === "summarizing"}
+            style={[
+              styles.runBtn,
+              recording && { backgroundColor: theme.colors.danger },
+              (phase === "transcribing" || phase === "summarizing") && { opacity: 0.7 },
+            ]}
+          >
             {phase === "transcribing" || phase === "summarizing" ? (
               <ActivityIndicator color="#07080F" />
             ) : (
@@ -203,7 +208,7 @@ export default function ClassroomScreen() {
             <Text style={styles.runBtnText}>
               {recording ? "Stop & analyze" : phase === "transcribing" ? "Transcribing…" : phase === "summarizing" ? "Summarizing…" : "Start recording"}
             </Text>
-          </Pressable>
+          </HoverGrowPressable>
 
           <Text style={{ ...theme.type.label, color: theme.colors.textMute, marginTop: 10 }}>{phaseLabel}</Text>
         </View>
@@ -213,7 +218,7 @@ export default function ClassroomScreen() {
         eyebrow="Library"
         title={`Saved notes (${savedNotes.length})`}
         action={
-          <Pressable
+          <HoverGrowPressable
             onPress={() => { haptic.light(); loadSavedNotes(); }}
             hitSlop={12}
             disabled={savedLoading}
@@ -223,7 +228,7 @@ export default function ClassroomScreen() {
             ) : (
               <Feather name="refresh-cw" size={16} color={theme.colors.warning} />
             )}
-          </Pressable>
+          </HoverGrowPressable>
         }
       />
       {savedNotes.length === 0 && !savedLoading ? (
@@ -234,7 +239,7 @@ export default function ClassroomScreen() {
         </GlassCard>
       ) : null}
       {savedNotes.slice(0, 40).map((m) => (
-        <Pressable
+        <HoverGrowPressable
           key={m.id}
           onPress={async () => {
             haptic.light();
@@ -277,7 +282,7 @@ export default function ClassroomScreen() {
               <Feather name="chevron-right" size={18} color={theme.colors.textMute} />
             </View>
           </GlassCard>
-        </Pressable>
+        </HoverGrowPressable>
       ))}
 
       {transcript ? (
@@ -333,7 +338,7 @@ export default function ClassroomScreen() {
               {summary.flashcards.map((f: any, i: number) => {
                 const revealed = Boolean(flashRevealed[i]);
                 return (
-                  <Pressable
+                  <HoverGrowPressable
                     key={`fc-${i}-${String(f.q).slice(0, 24)}`}
                     onPress={() => {
                       haptic.light();
@@ -359,7 +364,7 @@ export default function ClassroomScreen() {
                         </>
                       )}
                     </GlassCard>
-                  </Pressable>
+                  </HoverGrowPressable>
                 );
               })}
             </>

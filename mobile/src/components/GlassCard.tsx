@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, ViewProps, ViewStyle } from "react-native";
+import { Platform, StyleSheet, View, ViewProps, ViewStyle } from "react-native";
 import { theme } from "@/theme";
 
 type Props = ViewProps & {
@@ -9,22 +9,40 @@ type Props = ViewProps & {
   accent?: string;
 };
 
+const cardShadow = Platform.select({
+  ios: {
+    shadowColor: "#000",
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  android: { elevation: 3 },
+  default: {},
+});
+
 export const GlassCard: React.FC<Props> = ({
   style, children, intensity = "med", padded = true, glow = false, accent, ...rest
 }) => {
   const bg =
-    intensity === "high" ? "rgba(32,36,68,0.72)" :
-    intensity === "low"  ? "rgba(20,24,48,0.45)" :
-                           "rgba(24,28,58,0.60)";
-  const border = accent ?? theme.colors.outlineSoft;
+    intensity === "high" ? "rgba(30,33,58,0.78)" :
+    intensity === "low"  ? "rgba(18,21,42,0.48)" :
+                           "rgba(22,25,52,0.64)";
+  const border = accent ?? theme.colors.hairline;
   return (
     <View
       {...rest}
       style={[
         styles.card,
+        cardShadow,
         { backgroundColor: bg, borderColor: border },
         padded && styles.padded,
-        glow && { shadowColor: accent ?? theme.colors.primary, shadowOpacity: 0.4, shadowRadius: 22, shadowOffset: { width: 0, height: 8 } },
+        glow && {
+          shadowColor: accent ?? theme.colors.primary,
+          shadowOpacity: Platform.OS === "ios" ? 0.28 : undefined,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: 8 },
+          ...(Platform.OS === "android" ? { elevation: 8 } : {}),
+        },
         style as ViewStyle,
       ]}
     >
@@ -35,11 +53,11 @@ export const GlassCard: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
+    borderRadius: theme.radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
   padded: {
-    padding: 18,
+    padding: 20,
   },
 });

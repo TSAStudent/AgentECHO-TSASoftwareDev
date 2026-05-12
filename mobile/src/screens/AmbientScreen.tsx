@@ -6,6 +6,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 
 import { Screen } from "@/components/Screen";
+import { HoverGrowPressable } from "@/components/HoverGrowPressable";
 import { GlassCard } from "@/components/GlassCard";
 import { WaveformBars } from "@/components/WaveformBars";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -41,7 +42,7 @@ function escapeRx(s: string) {
 }
 
 export default function AmbientScreen() {
-  const { isListening, setIsListening, soundEvents, pushSoundEvent, clearEvents, userName, ingestPersistedActions } = useEcho();
+  const { isListening, setIsListening, nightMode, setNightMode, soundEvents, pushSoundEvent, clearEvents, userName, ingestPersistedActions } = useEcho();
   const [direction, setDirection] = useState<SoundEvent["direction"]>("N");
   const [lastResult, setLastResult] = useState<string>("");
   const [chunkCount, setChunkCount] = useState(0);
@@ -235,7 +236,7 @@ export default function AmbientScreen() {
               <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim }}>
                 {isListening
                   ? `${chunkCount} sound clip${chunkCount === 1 ? "" : "s"} checked so far`
-                  : "Tap LIVE here or resume on Home. Same listening session either place."}
+                  : "Tap Resume or Night below, LIVE in the header, or on Home — same listening session everywhere."}
               </Text>
               {capturedFromAmbient > 0 ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
@@ -252,6 +253,44 @@ export default function AmbientScreen() {
                 <WaveformBars bars={30} color={theme.colors.cyan} active={isListening} height={30} />
               </View>
             </View>
+          </View>
+          <View style={styles.ambientHeroRow}>
+            <HoverGrowPressable
+              onPress={() => { haptic.medium(); setIsListening(!isListening); }}
+              style={[
+                styles.ambientHeroBtn,
+                Platform.OS === "web" ? { marginHorizontal: 0 } : null,
+                {
+                  backgroundColor: isListening ? "rgba(255,255,255,0.12)" : theme.colors.accent,
+                  borderColor: isListening ? theme.colors.controlStrokeMuted : "rgba(6,32,28,0.55)",
+                },
+              ]}
+            >
+              <Ionicons
+                name={isListening ? "pause" : "play"}
+                size={20}
+                color={isListening ? theme.colors.text : "#07080F"}
+              />
+              <Text style={[styles.ambientHeroBtnText, { color: isListening ? theme.colors.text : "#07080F" }]}>
+                {isListening ? "Pause" : "Resume"}
+              </Text>
+            </HoverGrowPressable>
+            <HoverGrowPressable
+              onPress={() => { haptic.light(); setNightMode(!nightMode); }}
+              style={[
+                styles.ambientHeroBtn,
+                Platform.OS === "web" ? { marginHorizontal: 0 } : null,
+                {
+                  backgroundColor: nightMode ? theme.colors.primary : "rgba(255,255,255,0.08)",
+                  borderColor: nightMode ? "rgba(200,180,255,0.5)" : theme.colors.controlStroke,
+                },
+              ]}
+            >
+              <Ionicons name="moon" size={20} color={theme.colors.text} />
+              <Text style={[styles.ambientHeroBtnText, { color: theme.colors.text }]}>
+                Night {nightMode ? "on" : "off"}
+              </Text>
+            </HoverGrowPressable>
           </View>
         </View>
       </GlassCard>
@@ -526,6 +565,29 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
     backgroundColor: "rgba(255,255,255,0.05)",
   },
+  /** Pause/Resume + Night — narrow pills (max 156), not full-width. */
+  ambientHeroRow: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    flexWrap: "wrap",
+    gap: 8,
+    alignSelf: "stretch",
+  },
+  ambientHeroBtn: {
+    maxWidth: 156,
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.stroke.control,
+  },
+  ambientHeroBtnText: { ...theme.type.label, letterSpacing: 0.35, fontSize: 11 },
   statRow: { flexDirection: "row", gap: 8, marginTop: 16 },
   statPill: {
     flex: 1, padding: 12,

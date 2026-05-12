@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 
 import { Screen } from "@/components/Screen";
+import { HoverGrowPressable } from "@/components/HoverGrowPressable";
 import { GlassCard } from "@/components/GlassCard";
 import { PulseRing } from "@/components/PulseRing";
 import { WaveformBars } from "@/components/WaveformBars";
@@ -185,9 +186,9 @@ export default function AslScreen() {
                   <Text style={styles.stageSub}>
                     Turn on the camera so ECHO can read your signs from short snapshots. Your video stays on your phone unless you choose to send a frame for recognition.
                   </Text>
-                  <Pressable onPress={requestPermission} style={styles.permBtn}>
+                  <HoverGrowPressable onPress={requestPermission} style={styles.permBtn}>
                     <Text style={styles.permBtnText}>Enable camera</Text>
-                  </Pressable>
+                  </HoverGrowPressable>
                 </View>
               ) : (
                 <View style={{ alignItems: "center" }}>
@@ -218,7 +219,7 @@ export default function AslScreen() {
               <PulseRing size={200} color={theme.colors.cyan} rings={3} active={speechPhase === "recording"}>
                 <AvatarSign />
               </PulseRing>
-              <Pressable onPress={onSpeechStartStop} style={[styles.micBtn, speechPhase === "recording" && { backgroundColor: theme.colors.danger }]}>
+              <HoverGrowPressable onPress={onSpeechStartStop} style={[styles.micBtn, speechPhase === "recording" && { backgroundColor: theme.colors.danger }]}>
                 {speechPhase === "transcribing" ? (
                   <ActivityIndicator color="#07080F" />
                 ) : (
@@ -227,7 +228,7 @@ export default function AslScreen() {
                 <Text style={styles.micBtnText}>
                   {speechPhase === "recording" ? "Stop & caption" : speechPhase === "transcribing" ? "Transcribing…" : "Tap to listen"}
                 </Text>
-              </Pressable>
+              </HoverGrowPressable>
               <Text style={styles.stageSub}>
                 When someone else talks, record them here. You’ll get live captions you can read next to the avatar while you sign back.
               </Text>
@@ -239,13 +240,13 @@ export default function AslScreen() {
               <View style={styles.serviceCard}>
                 <Text style={styles.serviceHeading}>I’m Deaf.{"\n"}Please read this 🙏</Text>
                 <Text style={styles.serviceSub}>I’ll answer in writing. You can speak normally; I’ll follow along in captions.</Text>
-                <Pressable
+                <HoverGrowPressable
                   onPress={() => speakAloud("I am Deaf. Please read this or respond in text. I will show captions to you.")}
                   style={styles.servicePress}
                 >
                   <Ionicons name="volume-high" size={20} color="#07080F" />
                   <Text style={styles.servicePressText}>{speaking ? "Speaking…" : "Tap to speak this aloud"}</Text>
-                </Pressable>
+                </HoverGrowPressable>
               </View>
             </View>
           )}
@@ -272,13 +273,13 @@ export default function AslScreen() {
             <Text style={{ ...theme.type.title, color: theme.colors.text, marginTop: 4 }}>{spokenTranslation}</Text>
             <WaveformBars bars={22} height={24} color={theme.colors.accent} active={speaking} />
             {(activeSigns.length > 0 || englishFromVision.trim().length > 0) ? (
-              <Pressable
+              <HoverGrowPressable
                 onPress={() => speakAloud(spokenTranslation)}
                 disabled={speaking}
                 style={[styles.permBtn, { marginTop: 10 }, speaking && { opacity: 0.6 }]}
               >
                 <Text style={styles.permBtnText}>{speaking ? "Speaking…" : "Read translation aloud"}</Text>
-              </Pressable>
+              </HoverGrowPressable>
             ) : null}
           </View>
         </GlassCard>
@@ -299,9 +300,9 @@ export default function AslScreen() {
           <Text style={{ ...theme.type.label, color: theme.colors.warning }}>QUICK REPLIES</Text>
           <View style={{ flexDirection: "row", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
             {["Thank you", "How much is it?", "Can you repeat that?", "I'm paying with card"].map((q) => (
-              <Pressable key={q} onPress={() => speakAloud(q)} style={styles.quick}>
+              <HoverGrowPressable key={q} onPress={() => speakAloud(q)} style={styles.quick}>
                 <Text style={styles.quickText}>{q}</Text>
-              </Pressable>
+              </HoverGrowPressable>
             ))}
           </View>
         </GlassCard>
@@ -325,10 +326,17 @@ export default function AslScreen() {
 const ModePill: React.FC<{ active: boolean; label: string; icon: any; onPress: () => void }> = ({
   active, label, icon, onPress,
 }) => (
-  <Pressable onPress={onPress} style={[styles.mode, active && styles.modeActive]}>
+  <HoverGrowPressable
+    onPress={onPress}
+    style={[
+      styles.mode,
+      active && styles.modeActive,
+      Platform.OS === "web" ? { marginHorizontal: 0 } : null,
+    ]}
+  >
     <MaterialCommunityIcons name={icon} size={16} color={active ? "#07080F" : theme.colors.text} />
     <Text style={[styles.modeText, { color: active ? "#07080F" : theme.colors.text }]}>{label}</Text>
-  </Pressable>
+  </HoverGrowPressable>
 );
 
 const AvatarSign: React.FC = () => (

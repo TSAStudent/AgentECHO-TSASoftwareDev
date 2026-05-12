@@ -39,14 +39,18 @@ const navTheme = {
 const TabBarBg = () => (
   <View style={StyleSheet.absoluteFill}>
     <BlurView
-      intensity={Platform.OS === "ios" ? 40 : 90}
+      intensity={Platform.OS === "ios" ? 28 : 72}
       tint="dark"
       style={StyleSheet.absoluteFill}
     />
     <View
       style={[
         StyleSheet.absoluteFill,
-        { backgroundColor: "rgba(10,12,28,0.7)", borderTopWidth: 1, borderTopColor: theme.colors.outlineSoft },
+        {
+          backgroundColor: "rgba(28,32,58,0.78)",
+          borderTopWidth: theme.stroke.control,
+          borderTopColor: theme.colors.controlStrokeMuted,
+        },
       ]}
     />
   </View>
@@ -62,31 +66,33 @@ function Tabs() {
         tabBarShowLabel: true,
         tabBarActiveTintColor: theme.colors.text,
         tabBarInactiveTintColor: theme.colors.textMute,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "700", letterSpacing: 0.3, marginBottom: 4 },
+        tabBarLabelStyle: { fontSize: 13, fontWeight: "600", letterSpacing: 0.12, marginBottom: 4 },
         tabBarStyle: {
           position: "absolute",
           borderTopWidth: 0,
-          height: 82,
-          paddingTop: 10,
+          height: 92,
+          paddingTop: 8,
+          paddingBottom: 6,
           backgroundColor: "transparent",
           elevation: 0,
         },
         tabBarBackground: () => <TabBarBg />,
         tabBarIcon: ({ color, focused }) => {
-          const size = 22;
+          const size = 27;
+          const iconColor = focused ? theme.colors.accent : color;
           switch (route.name) {
             case "Home":
-              return <Ionicons name={focused ? "pulse" : "pulse-outline"} size={size} color={color} />;
+              return <Ionicons name={focused ? "pulse" : "pulse-outline"} size={size} color={iconColor} />;
             case "Listen":
-              return <Ionicons name={focused ? "radio" : "radio-outline"} size={size} color={color} />;
+              return <Ionicons name={focused ? "radio" : "radio-outline"} size={size} color={iconColor} />;
             case "Talk":
-              return <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={size} color={color} />;
+              return <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={size} color={iconColor} />;
             case "ASL":
-              return <MaterialCommunityIcons name="hand-wave-outline" size={size} color={color} />;
+              return <MaterialCommunityIcons name="hand-wave-outline" size={size} color={iconColor} />;
             case "SOS":
-              return <Ionicons name={focused ? "shield" : "shield-outline"} size={size} color={color} />;
+              return <Ionicons name={focused ? "shield" : "shield-outline"} size={size} color={iconColor} />;
             default:
-              return <Ionicons name="ellipse" size={size} color={color} />;
+              return <Ionicons name="ellipse" size={size} color={iconColor} />;
           }
         },
       })}

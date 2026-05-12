@@ -5,7 +5,7 @@ import { theme } from "@/theme";
 export const Tag: React.FC<{ label: string; color?: string; icon?: React.ReactNode }> = ({
   label, color = theme.colors.accent, icon,
 }) => (
-  <View style={[styles.tag, { borderColor: color + "66", backgroundColor: color + "1A" }]}>
+  <View style={[styles.tag, { borderColor: color + "55", backgroundColor: color + "14" }]}>
     {icon}
     <Text style={[styles.text, { color }]}>{label}</Text>
   </View>
@@ -15,14 +15,15 @@ const styles = StyleSheet.create({
   tag: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: theme.radius.pill,
-    borderWidth: 1,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: theme.radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
     alignSelf: "flex-start",
-    gap: 5,
+    gap: 6,
   },
   text: {
-    ...theme.type.label,
+    ...theme.type.overline,
+    letterSpacing: 0.65,
   },
 });

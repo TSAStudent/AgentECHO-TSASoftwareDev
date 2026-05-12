@@ -5,6 +5,7 @@ import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 
 import { Screen } from "@/components/Screen";
+import { HoverGrowPressable } from "@/components/HoverGrowPressable";
 import { GlassCard } from "@/components/GlassCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Tag } from "@/components/Tag";
@@ -107,7 +108,7 @@ export default function EmergencyScreen() {
       {/* SOS button */}
       <View style={{ alignItems: "center", marginVertical: 12 }}>
         <Animated.View style={{ transform: [{ scale: ringScale }] }}>
-          <Pressable
+          <HoverGrowPressable
             onPressIn={startHold}
             onPressOut={cancelHold}
             style={styles.sosOuter}
@@ -125,7 +126,7 @@ export default function EmergencyScreen() {
                 {pressing ? "Dispatching in 1.5s" : "1.5-second safety lock"}
               </Text>
             </View>
-          </Pressable>
+          </HoverGrowPressable>
         </Animated.View>
         {status ? <Text style={styles.status}>{status}</Text> : null}
       </View>
@@ -161,9 +162,9 @@ export default function EmergencyScreen() {
         eyebrow="Contacts"
         title={`${trustedCircle.length} on standby`}
         action={
-          <Pressable onPress={() => { haptic.light(); setModalOpen(true); }} hitSlop={10}>
+          <HoverGrowPressable onPress={() => { haptic.light(); setModalOpen(true); }} hitSlop={10}>
             <Feather name="plus" size={18} color={theme.colors.accent} />
-          </Pressable>
+          </HoverGrowPressable>
         }
       />
       {trustedCircle.length === 0 ? (
@@ -184,9 +185,9 @@ export default function EmergencyScreen() {
                 {c.relation ? `${c.relation} · ` : ""}{c.phone}
               </Text>
             </View>
-            <Pressable onPress={() => { haptic.light(); removeContact(c.id); }} hitSlop={10}>
+            <HoverGrowPressable onPress={() => { haptic.light(); removeContact(c.id); }} hitSlop={10}>
               <Feather name="x" size={18} color={theme.colors.textMute} />
-            </Pressable>
+            </HoverGrowPressable>
           </View>
         ))
       )}
@@ -237,12 +238,12 @@ export default function EmergencyScreen() {
             {formError ? <Text style={{ ...theme.type.bodySm, color: theme.colors.danger, marginTop: 10 }}>{formError}</Text> : null}
 
             <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-              <Pressable onPress={() => setModalOpen(false)} style={[styles.mBtn, styles.mBtnGhost]}>
+              <HoverGrowPressable onPress={() => setModalOpen(false)} style={[styles.mBtn, styles.mBtnGhost]}>
                 <Text style={{ ...theme.type.label, color: theme.colors.text }}>CANCEL</Text>
-              </Pressable>
-              <Pressable onPress={submitContact} disabled={submitting} style={[styles.mBtn, { backgroundColor: theme.colors.accent, opacity: submitting ? 0.6 : 1 }]}>
+              </HoverGrowPressable>
+              <HoverGrowPressable onPress={submitContact} disabled={submitting} style={[styles.mBtn, { backgroundColor: theme.colors.accent, opacity: submitting ? 0.6 : 1 }]}>
                 <Text style={{ ...theme.type.label, color: "#07080F" }}>{submitting ? "SAVING…" : "ADD"}</Text>
-              </Pressable>
+              </HoverGrowPressable>
             </View>
           </Pressable>
         </Pressable>

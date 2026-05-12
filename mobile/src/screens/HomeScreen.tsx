@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View, type ViewStyle } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import { PressableScale } from "@/components/PressableScale";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
-import { Screen } from "@/components/Screen";
+import { Screen, SCREEN_SCROLL_H_PAD } from "@/components/Screen";
 import { GlassCard } from "@/components/GlassCard";
 import { WaveformBars } from "@/components/WaveformBars";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -21,6 +24,12 @@ import { theme } from "@/theme";
 import { useEcho } from "@/context/EchoContext";
 import { haptic, timeAgo } from "@/utils/format";
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const QUICK_TILE_HOVER_SPRING = { damping: 18, stiffness: 440, mass: 0.48 };
+/** Web hover scale — kept modest so inset slots absorb paint without touching neighbors. */
+const QUICK_TILE_HOVER_SCALE = 1.04;
+
 export default function HomeScreen() {
   const {
     isListening, nightMode, userName,
@@ -29,6 +38,23 @@ export default function HomeScreen() {
     trustedCircle,
   } = useEcho();
   const nav = useNavigation<any>();
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isWeb = Platform.OS === "web";
+  /** Laptop / large tablet: room for larger tile copy and icons. */
+  const isWideLayout = windowWidth >= 768;
+  const tileRowBleedStyle = useMemo((): ViewStyle => {
+    if (isWeb) {
+      return {
+        width: windowWidth,
+        marginLeft: -(insets.left + SCREEN_SCROLL_H_PAD),
+        marginRight: -(insets.right + SCREEN_SCROLL_H_PAD),
+        alignSelf: "center",
+      };
+    }
+    return { marginHorizontal: -SCREEN_SCROLL_H_PAD, alignSelf: "stretch" };
+  }, [isWeb, windowWidth, insets.left, insets.right]);
+
   const [nameModal, setNameModal] = useState(false);
   const [draftName, setDraftName] = useState(userName);
   const todayStart = startOfLocalDay(new Date());
@@ -70,7 +96,8 @@ export default function HomeScreen() {
   return (
     <Screen>
       <View style={styles.top}>
-        <Pressable
+        <PressableScale
+          scaleBuffer={1}
           onPress={() => { setDraftName(userName); setNameModal(true); haptic.light(); }}
           hitSlop={8}
           style={{ flexShrink: 1 }}
@@ -80,10 +107,10 @@ export default function HomeScreen() {
             <Text style={styles.name}>{userName}.</Text>
             <Feather name="edit-2" size={16} color={theme.colors.textDim} />
           </View>
-        </Pressable>
-        <Pressable style={styles.iconButton} onPress={() => nav.navigate("Settings")} hitSlop={10}>
+        </PressableScale>
+        <PressableScale scaleBuffer={2} style={styles.iconButton} onPress={() => nav.navigate("Settings")} hitSlop={10}>
           <Ionicons name="settings-outline" size={22} color={theme.colors.text} />
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* Listening hero */}
@@ -127,13 +154,20 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.heroButtons}>
-              <Pressable
+              <PressableScale
+                scaleBuffer={3}
                 onPress={() => { haptic.medium(); setIsListening(!isListening); }}
-                style={[styles.heroBtn, { backgroundColor: isListening ? "rgba(255,255,255,0.12)" : theme.colors.accent }]}
+                style={[
+                  styles.heroBtn,
+                  {
+                    backgroundColor: isListening ? "rgba(255,255,255,0.12)" : theme.colors.accent,
+                    borderColor: isListening ? theme.colors.controlStrokeMuted : "rgba(6,32,28,0.55)",
+                  },
+                ]}
               >
                 <Ionicons
                   name={isListening ? "pause" : "play"}
-                  size={16}
+                  size={18}
                   color={isListening ? theme.colors.text : "#07080F"}
                 />
                 <Text
@@ -144,43 +178,54 @@ export default function HomeScreen() {
                 >
                   {isListening ? "Pause" : "Resume"}
                 </Text>
-              </Pressable>
-              <Pressable
+              </PressableScale>
+              <PressableScale
+                scaleBuffer={3}
                 onPress={() => { haptic.light(); setNightMode(!nightMode); }}
-                style={[styles.heroBtn, { backgroundColor: nightMode ? theme.colors.primary : "rgba(255,255,255,0.08)" }]}
+                style={[
+                  styles.heroBtn,
+                  {
+                    backgroundColor: nightMode ? theme.colors.primary : "rgba(255,255,255,0.08)",
+                    borderColor: nightMode ? "rgba(200,180,255,0.5)" : theme.colors.controlStroke,
+                  },
+                ]}
               >
-                <Ionicons name="moon" size={14} color={theme.colors.text} />
+                <Ionicons name="moon" size={17} color={theme.colors.text} />
                 <Text style={[styles.heroBtnText, { color: theme.colors.text }]}>
                   Night {nightMode ? "on" : "off"}
                 </Text>
-              </Pressable>
+              </PressableScale>
             </View>
           </View>
         </View>
       </GlassCard>
 
-      {/* Quick access */}
-      <View style={styles.grid}>
+      {/* Quick access — four separate tiles with small gaps */}
+      <View style={[styles.quickAccessRow, tileRowBleedStyle]}>
         <QuickTile
-          icon={<Ionicons name="chatbubbles" size={22} color={theme.colors.cyan} />}
+          wide={isWideLayout}
+          icon={<Ionicons name="chatbubbles" size={isWideLayout ? 26 : 20} color={theme.colors.cyan} />}
           label="Conversation"
           sub="Who said what, live"
           onPress={() => nav.navigate("Talk")}
         />
         <QuickTile
-          icon={<MaterialCommunityIcons name="hand-wave" size={22} color={theme.colors.primary} />}
+          wide={isWideLayout}
+          icon={<MaterialCommunityIcons name="hand-wave" size={isWideLayout ? 26 : 20} color={theme.colors.primary} />}
           label="ASL Bridge"
           sub="Sign and voice both ways"
           onPress={() => nav.navigate("ASL")}
         />
         <QuickTile
-          icon={<Ionicons name="school" size={22} color={theme.colors.warning} />}
+          wide={isWideLayout}
+          icon={<Ionicons name="school" size={isWideLayout ? 26 : 20} color={theme.colors.warning} />}
           label="Class / Meeting"
           sub="Notes, cards, recap"
           onPress={() => nav.navigate("Classroom")}
         />
         <QuickTile
-          icon={<MaterialCommunityIcons name="stethoscope" size={22} color={theme.colors.success} />}
+          wide={isWideLayout}
+          icon={<MaterialCommunityIcons name="stethoscope" size={isWideLayout ? 26 : 20} color={theme.colors.success} />}
           label="Medical"
           sub="Appointment companion"
           onPress={() => nav.navigate("Medical")}
@@ -192,19 +237,19 @@ export default function HomeScreen() {
         eyebrow="Tasks"
         title="Captured for you"
         action={
-          <Pressable onPress={() => nav.navigate("Listen")}>
+          <PressableScale onPress={() => nav.navigate("Listen")} scaleBuffer={0} style={{ paddingVertical: 6, paddingHorizontal: 4 }}>
             <Text style={styles.link}>See all</Text>
-          </Pressable>
+          </PressableScale>
         }
       />
       <GlassCard intensity="low" style={{ marginBottom: 12, marginHorizontal: -18, alignSelf: "stretch" }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, paddingHorizontal: 18 }}>
           <Text style={{ ...theme.type.label, color: theme.colors.textDim }}>WEEK VIEW</Text>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Pressable onPress={() => { setWeekOffset((w) => w - 1); haptic.light(); }} hitSlop={8}>
+          <View style={{ flexDirection: "row", gap: 14 }}>
+            <PressableScale onPress={() => { setWeekOffset((w) => w - 1); haptic.light(); }} hitSlop={8}>
               <Feather name="chevron-left" size={18} color={theme.colors.accent} />
-            </Pressable>
-            <Pressable
+            </PressableScale>
+            <PressableScale
               onPress={() => {
                 setWeekOffset(0);
                 setSelectedDay(todayStart);
@@ -214,10 +259,10 @@ export default function HomeScreen() {
               hitSlop={8}
             >
               <Text style={{ ...theme.type.label, color: theme.colors.accent }}>This week</Text>
-            </Pressable>
-            <Pressable onPress={() => { setWeekOffset((w) => w + 1); haptic.light(); }} hitSlop={8}>
+            </PressableScale>
+            <PressableScale onPress={() => { setWeekOffset((w) => w + 1); haptic.light(); }} hitSlop={8}>
               <Feather name="chevron-right" size={18} color={theme.colors.accent} />
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
         <CapturedWeekStrip
@@ -238,7 +283,6 @@ export default function HomeScreen() {
             action={a}
             emphasizeCompletedStrike
             onToggle={() => toggleActionDone(a.id)}
-            onSchedule={() => haptic.success()}
           />
         ))
       )}
@@ -262,9 +306,9 @@ export default function HomeScreen() {
               {standbySubtitle}
             </Text>
           </View>
-          <Pressable onPress={() => nav.navigate("SOS")} style={styles.openBtn}>
-            <Feather name="arrow-up-right" size={16} color={theme.colors.text} />
-          </Pressable>
+          <PressableScale onPress={() => nav.navigate("SOS")} style={styles.openBtn}>
+            <Feather name="arrow-up-right" size={18} color={theme.colors.text} />
+          </PressableScale>
         </View>
       </GlassCard>
 
@@ -293,11 +337,11 @@ export default function HomeScreen() {
               autoCapitalize="words"
               style={styles.nameInput}
             />
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-              <Pressable onPress={() => setNameModal(false)} style={[styles.mBtn, styles.mBtnGhost]}>
+            <View style={{ flexDirection: "row", gap: 14, marginTop: 18 }}>
+              <PressableScale onPress={() => setNameModal(false)} style={[styles.mBtn, styles.mBtnGhost]}>
                 <Text style={{ ...theme.type.label, color: theme.colors.text }}>CANCEL</Text>
-              </Pressable>
-              <Pressable
+              </PressableScale>
+              <PressableScale
                 onPress={() => {
                   const v = draftName.trim();
                   if (!v) return;
@@ -305,10 +349,10 @@ export default function HomeScreen() {
                   setNameModal(false);
                   haptic.success();
                 }}
-                style={[styles.mBtn, { backgroundColor: theme.colors.accent }]}
+                style={[styles.mBtn, { backgroundColor: theme.colors.accent, borderColor: "rgba(6,32,28,0.55)" }]}
               >
                 <Text style={{ ...theme.type.label, color: "#07080F" }}>SAVE</Text>
-              </Pressable>
+              </PressableScale>
             </View>
           </Pressable>
         </Pressable>
@@ -317,15 +361,50 @@ export default function HomeScreen() {
   );
 }
 
-const QuickTile: React.FC<{ icon: React.ReactNode; label: string; sub: string; onPress: () => void }> = ({
-  icon, label, sub, onPress,
-}) => (
-  <Pressable style={styles.tile} onPress={() => { haptic.light(); onPress(); }}>
-    <View style={styles.tileIcon}>{icon}</View>
-    <Text style={styles.tileLabel}>{label}</Text>
-    <Text style={styles.tileSub}>{sub}</Text>
-  </Pressable>
-);
+const QuickTile: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  sub: string;
+  onPress: () => void;
+  wide?: boolean;
+}> = ({ icon, label, sub, onPress, wide }) => {
+  const isWeb = Platform.OS === "web";
+  const hovered = useSharedValue(false);
+
+  const scaleStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: withSpring(isWeb && hovered.value ? QUICK_TILE_HOVER_SCALE : 1, QUICK_TILE_HOVER_SPRING) },
+    ],
+  }));
+
+  return (
+    <View style={styles.quickAccessTileSlot}>
+      <AnimatedPressable
+        style={[
+          styles.quickAccessBtn,
+          wide && styles.quickAccessBtnWide,
+          scaleStyle,
+          isWeb ? ({ cursor: "pointer" } as ViewStyle) : null,
+        ]}
+        onPress={() => { haptic.light(); onPress(); }}
+        onHoverIn={() => {
+          if (isWeb) hovered.value = true;
+        }}
+        onHoverOut={() => {
+          if (isWeb) hovered.value = false;
+        }}
+      >
+        <View style={[styles.tileIcon, wide && styles.tileIconWide]}>{icon}</View>
+        <Text style={[styles.tileLabel, wide && styles.tileLabelWide]} numberOfLines={wide ? 2 : 3}>
+          {label}
+        </Text>
+        <Text style={[styles.tileSub, wide && styles.tileSubWide]} numberOfLines={wide ? 2 : 3}>
+          {sub}
+        </Text>
+      </AnimatedPressable>
+    </View>
+  );
+};
 
 const EmptyHint: React.FC<{ text: string }> = ({ text }) => (
   <GlassCard intensity="low">
@@ -334,88 +413,153 @@ const EmptyHint: React.FC<{ text: string }> = ({ text }) => (
 );
 
 const styles = StyleSheet.create({
-  top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8, marginBottom: 18 },
-  greet: { ...theme.type.body, color: theme.colors.textDim },
-  name: { ...theme.type.display, color: theme.colors.text },
+  top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4, marginBottom: 22 },
+  greet: { ...theme.type.bodySm, color: theme.colors.textDim, letterSpacing: 0.2 },
+  name: { ...theme.type.display, color: theme.colors.text, marginTop: 2 },
   iconButton: {
-    width: 42, height: 42, borderRadius: 42,
+    width: 48, height: 48, borderRadius: theme.radius.md,
     alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1, borderColor: theme.colors.outlineSoft,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.controlStroke,
   },
 
-  hero: { overflow: "hidden" },
-  heroTint: { ...StyleSheet.absoluteFillObject, opacity: 0.25 },
-  heroInner: { flexDirection: "row", gap: 14, padding: 18, alignItems: "center" },
+  hero: { overflow: "hidden", borderRadius: theme.radius.lg },
+  heroTint: { ...StyleSheet.absoluteFillObject, opacity: 0.22 },
+  heroInner: { flexDirection: "row", gap: 16, padding: 20, alignItems: "center" },
   heroIconTile: {
-    width: 76,
-    height: 76,
+    width: 72,
+    height: 72,
     borderRadius: theme.radius.lg,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    backgroundColor: "rgba(10,13,30,0.65)",
+    borderWidth: theme.stroke.control,
+    backgroundColor: "rgba(12,14,28,0.75)",
   },
   heroIconTileLive: {
-    borderColor: theme.colors.accent + "88",
-    backgroundColor: theme.colors.accent + "18",
+    borderColor: theme.colors.accent,
+    backgroundColor: theme.colors.accent + "16",
   },
   heroIconTileIdle: {
-    borderColor: "rgba(255,255,255,0.14)",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    borderColor: theme.colors.controlStroke,
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
-  heroTitle: { ...theme.type.title, color: theme.colors.text, marginTop: 8 },
+  heroTitle: { ...theme.type.title, color: theme.colors.text, marginTop: 10, fontSize: 21, lineHeight: 27 },
   heroCaption: {
     ...theme.type.bodySm,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 19,
     color: theme.colors.textMute,
-    marginTop: 6,
+    marginTop: 8,
   },
-  heroSub: { ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 8 },
-  heroWave: { marginTop: 10, marginBottom: 14 },
-  heroButtons: { flexDirection: "row", gap: 8 },
+  heroSub: { ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 10 },
+  heroWave: { marginTop: 12, marginBottom: 16 },
+  heroButtons: { flexDirection: "row", gap: 12, justifyContent: "flex-start" },
   heroBtn: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 12, paddingVertical: 8,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 50,
     borderRadius: theme.radius.pill,
+    borderWidth: theme.stroke.control,
   },
-  heroBtnText: { ...theme.type.label },
+  heroBtnText: { ...theme.type.label, letterSpacing: 0.45, fontSize: 12 },
 
-  grid: {
-    flexDirection: "row", flexWrap: "wrap", gap: 10,
-    marginTop: 20,
+  quickAccessRow: {
+    flexDirection: "row",
+    marginTop: 22,
+    width: "100%",
+    alignItems: "stretch",
+    gap: 8,
   },
-  tile: {
-    flexBasis: "48%",
-    flexGrow: 1,
-    padding: 14,
-    borderRadius: theme.radius.lg,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1, borderColor: theme.colors.outlineSoft,
+  /** Inset around each tile so hover scale paints inside the column, not over siblings. */
+  quickAccessTileSlot: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    paddingHorizontal: 5,
+    paddingVertical: 4,
+  },
+  /** Equal-width tiles; outer row `gap` + slot padding keep scaled hover clear of neighbors. */
+  quickAccessBtn: {
+    flex: 1,
+    width: "100%",
+    minWidth: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    backgroundColor: "rgba(22,25,52,0.72)",
+    borderRadius: theme.radius.md,
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.controlStroke,
+  },
+  quickAccessBtnWide: {
+    paddingVertical: 20,
+    paddingHorizontal: 10,
   },
   tileIcon: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1, borderColor: theme.colors.outlineSoft,
-    alignItems: "center", justifyContent: "center",
+    width: 40,
+    height: 40,
+    borderRadius: theme.radius.md,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.controlStrokeMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  tileIconWide: {
+    width: 52,
+    height: 52,
     marginBottom: 10,
   },
-  tileLabel: { ...theme.type.h3, color: theme.colors.text },
-  tileSub:   { ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 2 },
+  tileLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "600",
+    color: theme.colors.text,
+    textAlign: "center",
+    letterSpacing: -0.1,
+  },
+  tileLabelWide: {
+    fontSize: 15,
+    lineHeight: 19,
+    letterSpacing: -0.2,
+  },
+  tileSub: {
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: "400",
+    color: theme.colors.textDim,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  tileSubWide: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 6,
+  },
 
-  link: { ...theme.type.label, color: theme.colors.accent },
+  link: { ...theme.type.label, color: theme.colors.accent, letterSpacing: 0.5 },
   shieldIcon: {
-    width: 42, height: 42, borderRadius: 14,
-    backgroundColor: theme.colors.accent + "18",
-    borderWidth: 1, borderColor: theme.colors.accent + "55",
-    alignItems: "center", justifyContent: "center",
+    width: 48, height: 48, borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.accent + "14",
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.accent + "66",
+    alignItems: "center",
+    justifyContent: "center",
   },
   openBtn: {
-    width: 34, height: 34, borderRadius: 34,
+    width: 42, height: 42, borderRadius: theme.radius.md,
     alignItems: "center", justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1, borderColor: theme.colors.outlineSoft,
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.controlStroke,
   },
   foot: { ...theme.type.bodySm, color: theme.colors.textMute, marginTop: 24, textAlign: "center" },
 
@@ -426,27 +570,30 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: "100%", maxWidth: 380,
-    backgroundColor: "#121530",
-    borderRadius: theme.radius.xl,
-    padding: 20,
-    borderWidth: 1, borderColor: theme.colors.outlineSoft,
+    backgroundColor: theme.colors.surfaceHi,
+    borderRadius: theme.radius.lg,
+    padding: 22,
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.controlStroke,
   },
   nameInput: {
     ...theme.type.title,
     color: theme.colors.text,
     backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1, borderColor: theme.colors.outlineSoft,
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.controlStroke,
     borderRadius: theme.radius.md,
     paddingHorizontal: 12, paddingVertical: 10,
     marginTop: 14,
   },
   mBtn: {
-    flex: 1, paddingVertical: 12,
+    flex: 1, paddingVertical: 14,
     borderRadius: theme.radius.md,
     alignItems: "center",
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.controlStroke,
   },
   mBtnGhost: {
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1, borderColor: theme.colors.outlineSoft,
   },
 });

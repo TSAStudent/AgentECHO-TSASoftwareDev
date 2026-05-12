@@ -5,6 +5,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
 import { Screen } from "@/components/Screen";
+import { HoverGrowPressable } from "@/components/HoverGrowPressable";
 import { GlassCard } from "@/components/GlassCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Tag } from "@/components/Tag";
@@ -147,9 +148,9 @@ export default function MedicalScreen() {
   return (
     <Screen>
       <View style={styles.top}>
-        <Pressable onPress={() => nav.goBack()} style={styles.back}>
+        <HoverGrowPressable onPress={() => nav.goBack()} style={styles.back}>
           <Feather name="chevron-left" size={22} color={theme.colors.text} />
-        </Pressable>
+        </HoverGrowPressable>
         <Tag label="HIPAA-READY" color={theme.colors.success} icon={<Ionicons name="lock-closed" size={10} color={theme.colors.success} />} />
       </View>
 
@@ -169,7 +170,7 @@ export default function MedicalScreen() {
               </Text>
             </View>
           </View>
-          <Pressable
+          <HoverGrowPressable
             onPress={onRecordVisit}
             disabled={visitPhase === "transcribing" || visitPhase === "summarizing"}
             style={[
@@ -186,7 +187,7 @@ export default function MedicalScreen() {
             <Text style={styles.recordBtnText}>
               {recording ? "Stop & analyze" : visitPhase === "transcribing" ? "Transcribing…" : visitPhase === "summarizing" ? "Summarizing…" : "Start recording visit"}
             </Text>
-          </Pressable>
+          </HoverGrowPressable>
           <Text style={{ ...theme.type.label, color: theme.colors.textMute, marginTop: 10 }}>{phaseLabel}</Text>
         </View>
       </GlassCard>
@@ -226,9 +227,9 @@ export default function MedicalScreen() {
         eyebrow="Prescriptions"
         title={`${active.length} active · ${nextDose ? "next " + relativeTime(nextDose) : "no upcoming dose"}`}
         action={
-          <Pressable onPress={() => { haptic.light(); setModalOpen(true); }} hitSlop={10}>
+          <HoverGrowPressable onPress={() => { haptic.light(); setModalOpen(true); }} hitSlop={10}>
             <Feather name="plus" size={18} color={theme.colors.accent} />
-          </Pressable>
+          </HoverGrowPressable>
         }
       />
       {active.length === 0 ? (
@@ -260,13 +261,13 @@ export default function MedicalScreen() {
                   ) : null}
                 </View>
               </View>
-              <Pressable onPress={() => { haptic.success(); takeMedication(m.id); }} style={styles.takeBtn}>
+              <HoverGrowPressable onPress={() => { haptic.success(); takeMedication(m.id); }} style={styles.takeBtn}>
                 <Ionicons name="checkmark" size={14} color="#07080F" />
                 <Text style={styles.takeBtnText}>TAKEN</Text>
-              </Pressable>
-              <Pressable onPress={() => { haptic.light(); removeMedication(m.id); }} hitSlop={10} style={{ marginLeft: 6 }}>
+              </HoverGrowPressable>
+              <HoverGrowPressable onPress={() => { haptic.light(); removeMedication(m.id); }} hitSlop={10} style={{ marginLeft: 6 }}>
                 <Feather name="x" size={16} color={theme.colors.textMute} />
-              </Pressable>
+              </HoverGrowPressable>
             </View>
           </GlassCard>
         ))
@@ -360,12 +361,12 @@ export default function MedicalScreen() {
             />
 
             <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-              <Pressable onPress={() => setModalOpen(false)} style={[styles.mBtn, styles.mBtnGhost]}>
+              <HoverGrowPressable onPress={() => setModalOpen(false)} style={[styles.mBtn, styles.mBtnGhost]}>
                 <Text style={{ ...theme.type.label, color: theme.colors.text }}>CANCEL</Text>
-              </Pressable>
-              <Pressable onPress={onSubmit} style={[styles.mBtn, { backgroundColor: theme.colors.success }]}>
+              </HoverGrowPressable>
+              <HoverGrowPressable onPress={onSubmit} style={[styles.mBtn, { backgroundColor: theme.colors.success }]}>
                 <Text style={{ ...theme.type.label, color: "#07080F" }}>ADD</Text>
-              </Pressable>
+              </HoverGrowPressable>
             </View>
           </Pressable>
         </Pressable>

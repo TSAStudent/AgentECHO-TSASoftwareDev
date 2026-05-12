@@ -16,6 +16,18 @@
   "actions": [
     {
       "type": "calendar",
+      "title": "Event on May 20th",
+      "detail": "You have an event scheduled.",
+      "when": "2026-05-20T09:00:00Z",
+      "sourceQuote": "Syria, on May 20th, you have a...",
+      "priority": "medium",
+      "confidence": 1,
+      "createdAt": 1778551960567,
+      "done": false,
+      "id": "a_mp1zwzqv_b47w"
+    },
+    {
+      "type": "calendar",
       "title": "Follow-up Checkup",
       "detail": "Return for a checkup to see how magnesium intake has improved.",
       "when": "2026-11-11T09:00:00Z",
@@ -448,6 +460,39 @@
     }
   ],
   "events": [
+    {
+      "label": "sos_dispatched",
+      "display": "Emergency attempted",
+      "tier": "emergency",
+      "icon": "shield-alert",
+      "confidence": 1,
+      "timestamp": 1778557139339,
+      "room": null,
+      "direction": null,
+      "acknowledged": false,
+      "meta": {
+        "trigger": "panic_button",
+        "level": "sos",
+        "result": {
+          "sent": false,
+          "preview": "[Agent ECHO SOS]\nI need help. This is Agent ECHO sending an SOS on my behalf.\nLive location: https://maps.google.com/?q=32.8827,-96.9468\nReply HELP if you're on the way.",
+          "results": [
+            {
+              "name": "Darshan",
+              "phone": "+19727994835",
+              "error": "The number +1972799XXXX is unverified. Trial accounts cannot send messages to unverified numbers; verify +1972799XXXX at twilio.com/user/account/phone-numbers/verified, or purchase a Twilio number to send messages to unverified numbers"
+            },
+            {
+              "name": "Big Su",
+              "phone": "+16767676767",
+              "error": "Invalid 'To' Phone Number: +1676767XXXX"
+            }
+          ],
+          "reason": "No contacts in Trusted Circle — add someone first."
+        }
+      },
+      "id": "e_mp22zzpn_oa3"
+    },
     {
       "label": "scream",
       "display": "Scream / help",

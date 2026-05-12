@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 
 import { Screen } from "@/components/Screen";
+import { HoverGrowPressable } from "@/components/HoverGrowPressable";
 import { GlassCard } from "@/components/GlassCard";
 import { WaveformBars } from "@/components/WaveformBars";
 import { Tag } from "@/components/Tag";
@@ -185,13 +186,13 @@ export default function ConversationScreen() {
           style={StyleSheet.absoluteFill}
         />
         <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Pressable onPress={onToggle} style={[styles.micRing, live && styles.micRingActive]}>
+          <HoverGrowPressable onPress={onToggle} style={[styles.micRing, live && styles.micRingActive]}>
             <MaterialCommunityIcons
               name={live ? "stop" : "microphone"}
               size={24}
               color={live ? theme.colors.danger : theme.colors.cyan}
             />
-          </Pressable>
+          </HoverGrowPressable>
           <View style={{ flex: 1 }}>
             <Text style={{ ...theme.type.h3, color: theme.colors.text }}>
               {live ? "Listening live" : lines.length > 0 ? `${lines.length} caption${lines.length === 1 ? "" : "s"}` : "Ready"}
@@ -261,11 +262,11 @@ export default function ConversationScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable onPress={onClear} style={styles.footBtnGhost}>
+        <HoverGrowPressable onPress={onClear} style={styles.footBtnGhost}>
           <Ionicons name="refresh" size={16} color={theme.colors.text} />
           <Text style={styles.footBtnText}>Clear</Text>
-        </Pressable>
-        <Pressable
+        </HoverGrowPressable>
+        <HoverGrowPressable
           onPress={onCapture}
           disabled={capturing || lines.length === 0}
           style={[styles.footBtn, (capturing || lines.length === 0) && { opacity: 0.5 }]}
@@ -278,7 +279,7 @@ export default function ConversationScreen() {
           <Text style={[styles.footBtnText, { color: "#07080F" }]}>
             {capturing ? "Capturing…" : "Capture actions"}
           </Text>
-        </Pressable>
+        </HoverGrowPressable>
       </View>
     </Screen>
   );

@@ -47,23 +47,36 @@ export const theme = {
     ...palette,
     bg: palette.ink,
     card: palette.surface,
+    /** Hairline UI chrome on dark surfaces */
+    hairline: "rgba(245,247,255,0.08)",
+    hairlineStrong: "rgba(245,247,255,0.12)",
+    /** Visible control rims (thicker borders) */
+    controlStroke: "rgba(110,120,190,0.45)",
+    controlStrokeMuted: "rgba(245,247,255,0.16)",
+  },
+  /** Default stroke width for buttons / tiles */
+  stroke: {
+    control: 2,
   },
   radius: {
-    xs: 8,
-    sm: 12,
-    md: 16,
-    lg: 22,
-    xl: 28,
+    xs: 10,
+    sm: 16,
+    md: 20,
+    lg: 26,
+    xl: 32,
     pill: 999,
   },
   spacing: (n: number) => n * 4,
   type: {
-    display: { fontSize: 34, lineHeight: 40, fontWeight: "800" as const, letterSpacing: -0.5 },
-    title:   { fontSize: 22, lineHeight: 28, fontWeight: "700" as const, letterSpacing: -0.2 },
-    h3:      { fontSize: 17, lineHeight: 22, fontWeight: "700" as const },
-    body:    { fontSize: 15, lineHeight: 21, fontWeight: "500" as const },
-    bodySm:  { fontSize: 13, lineHeight: 18, fontWeight: "500" as const },
-    label:   { fontSize: 11, lineHeight: 14, fontWeight: "700" as const, letterSpacing: 1.2, textTransform: "uppercase" as const },
+    display: { fontSize: 31, lineHeight: 37, fontWeight: "700" as const, letterSpacing: -0.45 },
+    title:   { fontSize: 20, lineHeight: 26, fontWeight: "600" as const, letterSpacing: -0.18 },
+    h3:      { fontSize: 17, lineHeight: 23, fontWeight: "600" as const },
+    body:    { fontSize: 15, lineHeight: 22, fontWeight: "400" as const },
+    bodySm:  { fontSize: 13, lineHeight: 19, fontWeight: "400" as const },
+    /** Chips / buttons */
+    label:   { fontSize: 11, lineHeight: 14, fontWeight: "600" as const, letterSpacing: 0.55, textTransform: "uppercase" as const },
+    /** Section kickers — tight, not shouty */
+    overline: { fontSize: 10, lineHeight: 13, fontWeight: "600" as const, letterSpacing: 0.85, textTransform: "uppercase" as const },
     mono:    { fontSize: 12, lineHeight: 16, fontFamily: "Menlo" as const },
   },
 };

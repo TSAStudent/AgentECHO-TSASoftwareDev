@@ -4,45 +4,51 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { GradientBackground } from "@/components/GradientBackground";
-import { PulseRing } from "@/components/PulseRing";
-import { theme } from "@/theme";
+import { theme, palette } from "@/theme";
 import { haptic } from "@/utils/format";
+
+/** Logo + CTA: dark blue lifted from `gradientNight` so it reads with ink bg + cards. */
+const ONBOARD_SOLID = palette.gradientNight[2];
+
+const BULLETS: { icon: keyof typeof Ionicons.glyphMap; text: string; color: string }[] = [
+  { icon: "ear", text: "Ambient sound + name detection", color: theme.colors.primary },
+  { icon: "sparkles", text: "Smart action capture from speech", color: theme.colors.info },
+  { icon: "hand-left", text: "Sign ↔ voice bridge", color: theme.colors.primary },
+  { icon: "shield-checkmark", text: "Trusted Circle emergency layer", color: theme.colors.danger },
+];
 
 export default function OnboardingScreen({ navigation }: NativeStackScreenProps<any>) {
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <GradientBackground />
+      <LinearGradient
+        colors={["rgba(26,32,80,0.35)", "transparent", "rgba(11,14,34,0.45)"]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       <View style={styles.container}>
         <View style={styles.hero}>
-          <PulseRing size={220} color={theme.colors.accent} rings={4}>
-            <LinearGradient
-              colors={theme.colors.gradientAurora}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.logoCore}
-            >
-              <MaterialCommunityIcons name="waveform" size={56} color="#07080F" />
-            </LinearGradient>
-          </PulseRing>
+          <View style={styles.logoCore}>
+            <MaterialCommunityIcons name="waveform" size={56} color={theme.colors.text} />
+          </View>
         </View>
 
         <View style={styles.copy}>
-          <Text style={styles.eyebrow}>AGENT ECHO</Text>
-          <Text style={styles.title}>Your ears, voice, and{"\n"}executive assistant.</Text>
+          <Text style={styles.eyebrow}>Agent ECHO</Text>
+          <Text style={styles.title}>Sound and speech that stay in your corner.</Text>
           <Text style={styles.subtitle}>
-            Built with Deaf and hard-of-hearing folks in mind. ECHO catches sound and speech in the background,
-            turns it into useful cues and tasks, and keeps things calm so you’re not living inside menus.
+            Built with Deaf and hard-of-hearing folks in mind. ECHO catches sound and speech in the
+            background, turns it into useful cues and tasks, and keeps things calm so you're not
+            living inside menus.
           </Text>
 
-          <View style={styles.bullets}>
-            {[
-              { icon: "ear",                 text: "Ambient sound + name detection" },
-              { icon: "sparkles",            text: "Smart action capture from speech" },
-              { icon: "hand-left",           text: "Sign ↔ voice bridge" },
-              { icon: "shield-checkmark",    text: "Trusted Circle emergency layer" },
-            ].map((b) => (
-              <View key={b.icon} style={styles.bullet}>
-                <Ionicons name={b.icon as any} size={18} color={theme.colors.accent} />
+          <View style={styles.bulletCard}>
+            {BULLETS.map((b) => (
+              <View key={b.text} style={styles.bullet}>
+                <Ionicons name={b.icon} size={18} color={b.color} />
                 <Text style={styles.bulletText}>{b.text}</Text>
               </View>
             ))}
@@ -51,20 +57,20 @@ export default function OnboardingScreen({ navigation }: NativeStackScreenProps<
 
         <Pressable
           onPress={() => { haptic.medium(); navigation.replace("Main"); }}
-          style={({ pressed }) => [styles.cta, pressed && { transform: [{ scale: 0.98 }] }]}
+          style={({ pressed }) => [
+            styles.cta,
+            {
+              borderColor: theme.colors.controlStroke,
+              transform: pressed ? [{ scale: 0.98 }] : undefined,
+            },
+          ]}
         >
-          <LinearGradient
-            colors={theme.colors.gradientAurora}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
           <Text style={styles.ctaText}>Activate ECHO</Text>
-          <Ionicons name="arrow-forward" size={20} color="#07080F" />
+          <Ionicons name="arrow-forward" size={20} color={theme.colors.text} />
         </Pressable>
 
         <Text style={styles.foot}>
-          Everything runs privately on-device by default. You choose when to share.
+          Runs on your device first. You choose if anything is shared beyond it.
         </Text>
       </View>
     </View>
@@ -72,26 +78,77 @@ export default function OnboardingScreen({ navigation }: NativeStackScreenProps<
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 24, paddingTop: 80, paddingBottom: 40, justifyContent: "space-between" },
-  hero: { alignItems: "center", marginTop: 20 },
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 72,
+    paddingBottom: 40,
+    justifyContent: "space-between",
+  },
+  hero: { alignItems: "center", marginTop: 8 },
   logoCore: {
-    width: 150, height: 150, borderRadius: 48,
-    alignItems: "center", justifyContent: "center",
-    shadowColor: theme.colors.primary, shadowOpacity: 0.8, shadowRadius: 30,
+    width: 150,
+    height: 150,
+    borderRadius: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: ONBOARD_SOLID,
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.controlStroke,
+    shadowColor: theme.colors.info,
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
   },
-  copy: {},
-  eyebrow: { ...theme.type.label, color: theme.colors.accent, marginBottom: 12 },
-  title: { ...theme.type.display, color: theme.colors.text, marginBottom: 12 },
-  subtitle: { ...theme.type.body, color: theme.colors.textDim },
-  bullets: { marginTop: 22, gap: 10 },
-  bullet: { flexDirection: "row", alignItems: "center", gap: 10 },
-  bulletText: { ...theme.type.body, color: theme.colors.text },
+  copy: { flexShrink: 1 },
+  eyebrow: {
+    ...theme.type.overline,
+    color: theme.colors.primary,
+    marginBottom: 10,
+  },
+  title: {
+    ...theme.type.display,
+    color: theme.colors.text,
+    marginBottom: 14,
+    letterSpacing: -0.4,
+  },
+  subtitle: {
+    ...theme.type.body,
+    color: theme.colors.textDim,
+    lineHeight: 23,
+  },
+  bulletCard: {
+    marginTop: 20,
+    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.card,
+    borderWidth: theme.stroke.control,
+    borderColor: theme.colors.outlineSoft,
+  },
+  bullet: { flexDirection: "row", alignItems: "center", gap: 12 },
+  bulletText: { ...theme.type.bodySm, color: theme.colors.text, flex: 1 },
   cta: {
-    height: 58, borderRadius: theme.radius.lg,
-    overflow: "hidden",
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    shadowColor: theme.colors.primary, shadowOpacity: 0.5, shadowRadius: 24,
+    height: 58,
+    borderRadius: theme.radius.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: theme.stroke.control,
+    backgroundColor: ONBOARD_SOLID,
+    shadowColor: theme.colors.info,
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
   },
-  ctaText: { ...theme.type.title, color: "#07080F" },
-  foot: { ...theme.type.bodySm, color: theme.colors.textMute, textAlign: "center", marginTop: 16 },
+  ctaText: { ...theme.type.title, color: theme.colors.text },
+  foot: {
+    ...theme.type.bodySm,
+    color: theme.colors.textMute,
+    textAlign: "center",
+    marginTop: 12,
+    lineHeight: 20,
+  },
 });

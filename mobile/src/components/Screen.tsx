@@ -4,6 +4,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { GradientBackground } from "./GradientBackground";
 import { theme } from "@/theme";
 
+/** Horizontal padding for scroll screens — shared with screens that full-bleed sections. */
+export const SCREEN_SCROLL_H_PAD = 22;
+
 type Props = {
   scroll?: boolean;
   children: React.ReactNode;
@@ -41,7 +44,8 @@ export const Screen: React.FC<Props> = ({ scroll = true, children, contentStyle,
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: theme.colors.bg },
   scroll: {
-    paddingHorizontal: 18,
-    paddingBottom: 120,
+    paddingHorizontal: SCREEN_SCROLL_H_PAD,
+    paddingTop: 6,
+    paddingBottom: 128,
   },
 });
