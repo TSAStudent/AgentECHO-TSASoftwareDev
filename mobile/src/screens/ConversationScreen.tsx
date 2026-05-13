@@ -23,9 +23,9 @@ type Line = {
   forYou?: boolean;
 };
 
-/** Rolling chunk for live captions; shorter = faster updates, more Whisper calls. */
+// Shorter CHUNK_MS = faster updates but more Whisper calls.
 const CHUNK_MS = 2300;
-const GAP_MS = 150;    // tiny gap between chunks while we kick off the next recorder
+const GAP_MS = 150;
 
 const emotionColor = (e?: Line["emotion"]) => {
   switch (e) {
@@ -54,19 +54,14 @@ export default function ConversationScreen() {
   const startedAtRef = useRef<number>(0);
   const scrollRef = useRef<ScrollView>(null);
 
-  // timer for "hh:mm:ss" indicator
   useEffect(() => {
     if (!live) return;
     const iv = setInterval(() => setElapsed(Date.now() - startedAtRef.current), 250);
     return () => clearInterval(iv);
   }, [live]);
 
-  // cleanup on unmount: make sure any running loop exits
   useEffect(() => () => { stopFlagRef.current = true; }, []);
 
-  /** Core rolling loop. Each iteration: record CHUNK_MS of audio, ship it to
-   *  Whisper (save=false so we don't create 100 transcript rows), append
-   *  segments. Continues until stop flag flips. */
   const runLoop = useCallback(async () => {
     stopFlagRef.current = false;
     setChunkCount(0);
@@ -76,7 +71,6 @@ export default function ConversationScreen() {
       if (stopFlagRef.current) break;
       if (!chunk) { await sleep(500); continue; }
 
-      // Transcribe off the main loop so the next recording can start immediately.
       transcribeInBackground(chunk, userName, (segs, text) => {
         if (!text || text.length < 2) return;
         transcriptRef.current = [transcriptRef.current, text].filter(Boolean).join(" ");
@@ -109,7 +103,6 @@ export default function ConversationScreen() {
       return;
     }
 
-    // Fresh session
     setLines([]);
     transcriptRef.current = "";
     setError(null);
@@ -285,10 +278,6 @@ export default function ConversationScreen() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  helpers                                                                   */
-/* -------------------------------------------------------------------------- */
-
 type Chunk = { uri: string; ext: string; mime: string };
 
 async function recordChunk(ms: number, shouldStop: () => boolean): Promise<Chunk | null> {
@@ -338,9 +327,7 @@ async function recordChunk(ms: number, shouldStop: () => boolean): Promise<Chunk
   }
 }
 
-/** Fire-and-forget transcription so the next chunk can start recording
- *  immediately. We deliberately set save=false — persisting every 4s chunk
- *  would produce hundreds of transcript rows per session. */
+// save=false on purpose; persisting every chunk would create hundreds of rows.
 function transcribeInBackground(
   chunk: Chunk,
   userName: string,
@@ -355,9 +342,7 @@ function transcribeInBackground(
       if (!res.ok) return;
       const data: any = await res.json();
       onDone(Array.isArray(data.segments) ? data.segments : [], (data.text || "").trim());
-    } catch {
-      // swallow — next chunk will come along
-    }
+    } catch {}
   })();
 }
 

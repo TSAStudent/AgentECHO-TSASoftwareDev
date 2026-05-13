@@ -3,11 +3,7 @@ import { store } from "../store.js";
 
 const router = Router();
 
-/**
- * Single-shot hydration endpoint. The mobile client calls this on launch to
- * atomically pull every collection it cares about. Saves a round-trip per
- * resource and guarantees the UI renders a coherent snapshot of state.
- */
+// Single-shot hydration: pulls every collection in one round-trip.
 router.get("/", (_req, res) => {
   const s = store.all();
   const removed = store.pruneByRetention(s.preferences?.retentionDays);
@@ -37,8 +33,6 @@ router.post("/reset", (_req, res) => {
 });
 
 function stripTranscriptSegments(t) {
-  // The list endpoint returns light-weight previews. Full segments are fetched
-  // individually when the user opens one.
   return {
     id: t.id,
     title: t.title,

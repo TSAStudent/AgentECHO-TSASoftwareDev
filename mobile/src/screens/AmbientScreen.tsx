@@ -25,17 +25,9 @@ import {
 } from "@/utils/ambientSessionLifecycle";
 
 const DIRECTIONS: Array<SoundEvent["direction"]> = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
-const CHUNK_MS = 5_000; // rolling chunk length
-const PAUSE_BETWEEN_MS = 400; // tiny gap so the mic doesn't overlap
+const CHUNK_MS = 5_000;
+const PAUSE_BETWEEN_MS = 400;
 
-/**
- * Ambient listening that actually captures audio from the device microphone,
- * splits it into short rolling chunks, ships each one to the backend for
- * classification, and drops the top label into the event log. This works on
- * both native (expo-av m4a) and web (MediaRecorder → webm) via the recorder
- * hook logic we already use in ConversationScreen, but inlined here because
- * we need very tight start/stop control for the loop.
- */
 function escapeRx(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -53,7 +45,7 @@ export default function AmbientScreen() {
 
   const stopFlagRef = useRef(false);
   const loopRef = useRef<Promise<void> | null>(null);
-  /** Last ~6 chunk transcripts (~30s) so a name in one chunk + task in the next still extract. */
+  // ~30s of recent transcript so cross-chunk references still extract.
   const rollingTextsRef = useRef<string[]>([]);
   const latestAmbientCombinedRef = useRef("");
 
@@ -67,7 +59,6 @@ export default function AmbientScreen() {
     if (isListening) setChunkCount(0);
   }, [isListening]);
 
-  // Core loop — runs as a single async task while ambient mode is on.
   const runLoop = useCallback(async () => {
     stopFlagRef.current = false;
     setErrorMsg(null);
@@ -81,9 +72,9 @@ export default function AmbientScreen() {
         const result: any = await api.classifySoundFromUri(chunk.uri, {
           ext: chunk.ext,
           mime: chunk.mime,
-          skipLow: true, // don't pollute the log with pure silence or plain speech
+          skipLow: true,
           userName,
-          persist: false, // pushSoundEvent handles the POST so we don't double-write
+          persist: false,
         });
 
         if (result?.top) {
@@ -109,7 +100,6 @@ export default function AmbientScreen() {
             || (youDirected && combined.length >= 14 && words.length >= 4)
             || (combined.length >= 22 && words.length >= 5);
 
-          // Only render real (non-skipped) classifications in the event log.
           const skipEvent = ["silence", "speech"].includes(result.top.label);
           if (!skipEvent) {
             pushSoundEvent({
@@ -123,7 +113,6 @@ export default function AmbientScreen() {
             });
           }
 
-          // Extract as soon as transcript crosses the bar — no wait for recording to stop (each chunk may still add text).
           if (shouldTryExtract) {
             const transcript = latestAmbientCombinedRef.current;
             if (transcript && transcript.length >= 10) {
@@ -138,7 +127,7 @@ export default function AmbientScreen() {
                   }
                   rollingTextsRef.current = [];
                 })
-                .catch(() => { /* non-fatal */ });
+                .catch(() => {});
             }
           }
         }
@@ -146,7 +135,6 @@ export default function AmbientScreen() {
         const msg = e?.message || "Ambient loop error";
         setErrorMsg(msg);
         void patchActiveAmbientSession({ error: msg });
-        // brief cooldown on failure so we don't spin
         await sleep(1500);
       }
 
@@ -154,7 +142,6 @@ export default function AmbientScreen() {
     }
   }, [pushSoundEvent, userName, ingestPersistedActions]);
 
-  // Sync logs + recover mic loop when opening Listen after toggling ambient from Home.
   useFocusEffect(
     useCallback(() => {
       loadListenLogs().then(setListenLogs);
@@ -420,11 +407,6 @@ export default function AmbientScreen() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Helpers — inline recorder so we can do tight loop control without relying */
-/*  on the generic useAudioRecorder hook's React state machine.               */
-/* -------------------------------------------------------------------------- */
-
 type Chunk = { uri: string; mime: string; ext: string };
 
 async function recordChunk(ms: number): Promise<Chunk | null> {
@@ -495,11 +477,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Fire the ambient transcript at the action-extraction endpoint. Only returns
- * actions that cleared the backend's confidence threshold and were actually
- * persisted — anything lower is noise. Floor matches `/api/extract-actions` (0.55).
- */
+// Only returns actions that cleared the backend's confidence floor (0.55).
 async function extractActionsFromAmbient(transcript: string, userName: string) {
   try {
     const { persisted } = await api.extractActions({
@@ -562,7 +540,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
     backgroundColor: "rgba(255,255,255,0.05)",
   },
-  /** Pause/Resume + Night — narrow pills (max 156), not full-width. */
   ambientHeroRow: {
     marginTop: 16,
     flexDirection: "row",

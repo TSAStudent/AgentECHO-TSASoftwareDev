@@ -34,10 +34,7 @@ router.delete("/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-/**
- * Accept US-style "555 010 1234", "(555) 010-1234", "+1 555 010 1234" etc.
- * Anything already in E.164 is preserved; a bare 10-digit US number gets a `+1`.
- */
+// E.164 is preserved as-is; bare 10-digit US numbers get a `+1` prefix.
 function normalizePhone(raw) {
   const trimmed = String(raw || "").trim();
   if (!trimmed) return null;

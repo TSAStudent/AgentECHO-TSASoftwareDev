@@ -28,7 +28,6 @@ export default function AslScreen() {
   const [speechPhase, setSpeechPhase] = useState<"idle" | "recording" | "transcribing">("idle");
   const [speaking, setSpeaking] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  /** Full sentence guess from vision (shown under Plain English). */
   const [englishFromVision, setEnglishFromVision] = useState("");
 
   const cameraRef = useRef<CameraView | null>(null);
@@ -37,11 +36,9 @@ export default function AslScreen() {
   const signsRef = useRef<string[]>([]);
   const { status: recStatus, start, stop } = useAudioRecorder();
 
-  // Keep a ref in sync with signs; the camera loop callback closes over stale
-  // state otherwise we lose the running sign history.
+  // Mirror signs into a ref so the interval callback sees fresh values.
   useEffect(() => { signsRef.current = activeSigns; }, [activeSigns]);
 
-  // ---------- sign → speech: camera frame loop ----------
   const captureFrame = useCallback(async () => {
     if (inFlightRef.current || !cameraRef.current) return;
     try {
@@ -49,7 +46,6 @@ export default function AslScreen() {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.72,
         base64: true,
-        // Let expo rotate/scale so hands appear upright for the vision model.
         skipProcessing: false,
       });
       const base64 = (photo as any)?.base64;
@@ -85,7 +81,6 @@ export default function AslScreen() {
     if (mode !== "sign_to_speech") return;
     if (!permission?.granted) return;
 
-    // Kick off the rolling capture.
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(captureFrame, FRAME_INTERVAL_MS);
 
@@ -99,7 +94,6 @@ export default function AslScreen() {
     if (mode !== "sign_to_speech") setEnglishFromVision("");
   }, [mode]);
 
-  // ---------- voice → sign: real mic → whisper ----------
   const onSpeechStartStop = async () => {
     haptic.medium();
     if (recStatus === "recording") {
@@ -126,7 +120,6 @@ export default function AslScreen() {
     setSpeechPhase("recording");
   };
 
-  // ---------- service: speak a phrase aloud via backend TTS ----------
   const speakAloud = async (text: string) => {
     setSpeaking(true);
     haptic.medium();
@@ -136,7 +129,6 @@ export default function AslScreen() {
         const audio = new Audio(`data:${r.mime || "audio/mpeg"};base64,${r.audioBase64}`);
         await audio.play().catch(() => {});
       } else if (r?.audioBase64) {
-        // Native: decode + play via expo-av. Lazy import so web doesn't pay the cost.
         const { Audio } = await import("expo-av");
         const sound = new Audio.Sound();
         await sound.loadAsync({ uri: `data:${r.mime || "audio/mpeg"};base64,${r.audioBase64}` } as any);

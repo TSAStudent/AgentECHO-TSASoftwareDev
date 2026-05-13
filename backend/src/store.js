@@ -2,12 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-/**
- * Tiny file-backed JSON store. Designed for a single-process hackathon/competition
- * deployment — every write persists synchronously to disk so nothing is lost if
- * the process dies. Safe enough for demos, NOT safe for multi-writer production
- * use; swap in lowdb/sqlite when needed without changing the public API.
- */
+// File-backed JSON store: single-writer, sync flushes. Swap for SQLite when scaling.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, "..", "data");
@@ -133,7 +128,7 @@ function load() {
   try {
     const raw = fs.readFileSync(DATA_FILE, "utf8");
     const parsed = JSON.parse(raw);
-    // Shallow-merge defaults so new collections added in code exist on old files.
+    // Merge defaults so new collections added in code exist on old files.
     const defaults = DEFAULTS();
     state = {
       ...defaults,
@@ -150,7 +145,7 @@ function load() {
 
 let persistQueued = false;
 function persist() {
-  // Debounce tight bursts (e.g. a rapid push of 10 events) into a single write.
+  // Debounce tight bursts into a single write.
   if (persistQueued) return;
   persistQueued = true;
   setImmediate(() => {
@@ -174,7 +169,6 @@ export const store = {
     return state;
   },
 
-  // ---------- generic list helpers ----------
   list(collection) {
     return this.all()[collection] || [];
   },
@@ -227,7 +221,6 @@ export const store = {
     }
   },
 
-  // ---------- object helpers ----------
   patchObject(key, patch) {
     const s = this.all();
     s[key] = { ...(s[key] || {}), ...patch };
@@ -235,7 +228,6 @@ export const store = {
     return s[key];
   },
 
-  // ---------- retention ----------
   pruneByRetention(days) {
     if (!days || days <= 0) return 0;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;

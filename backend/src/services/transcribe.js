@@ -1,11 +1,6 @@
 import { getOpenAI, hasOpenAI } from "./openaiClient.js";
 
-/**
- * Transcribe audio with Whisper and synthesize a lightweight "diarization"
- * display by chunking into utterances and tagging speakers heuristically.
- * A production deployment would pair this with pyannote; we ship a graceful
- * fallback so the UI always has rich data to render.
- */
+// Whisper transcription + heuristic diarization. Pair with pyannote in production.
 export async function transcribeAudio(buffer, { filename = "audio.m4a", language } = {}) {
   if (!hasOpenAI()) {
     return demoTranscript();

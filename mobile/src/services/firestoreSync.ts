@@ -1,19 +1,3 @@
-/**
- * Per-collection CRUD + real-time subscriptions to Firestore.
- *
- * Each helper is a no-op when Firebase isn't configured, so the rest of the
- * app can call `fs.addAction(...)` etc. without first checking `fs.enabled()`.
- *
- * Document layout:
- *   users/{uid}/meta/profile             — { userName, createdAt, updatedAt }
- *   users/{uid}/meta/preferences         — preferences object + updatedAt
- *   users/{uid}/soundEvents/{id}         — SoundEvent
- *   users/{uid}/actions/{id}             — CapturedAction
- *   users/{uid}/contacts/{id}            — TrustedContact
- *   users/{uid}/medications/{id}         — Medication
- *   users/{uid}/medicalVisitLog/{id}     — MedicalVisitLogEntry
- */
-
 import {
   collection,
   deleteDoc,
@@ -31,8 +15,6 @@ import {
 } from "firebase/firestore";
 import { firebaseHandle } from "@/services/firebase";
 
-// Local copies of the types so this file doesn't introduce a circular import
-// with EchoContext (which itself uses these helpers).
 export type SoundEvent = {
   id: string;
   label: string;
@@ -101,7 +83,6 @@ export type Preferences = {
 
 export type Profile = { userName: string; createdAt?: number };
 
-// ---------- path helpers ----------
 const profileDoc = (db: Firestore, uid: string) => doc(db, "users", uid, "meta", "profile");
 const prefsDoc   = (db: Firestore, uid: string) => doc(db, "users", uid, "meta", "preferences");
 const eventsCol  = (db: Firestore, uid: string) => collection(db, "users", uid, "soundEvents");
@@ -110,23 +91,17 @@ const contactsCol = (db: Firestore, uid: string) => collection(db, "users", uid,
 const medsCol     = (db: Firestore, uid: string) => collection(db, "users", uid, "medications");
 const medLogCol   = (db: Firestore, uid: string) => collection(db, "users", uid, "medicalVisitLog");
 
-// ---------- utilities ----------
 function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-/** Firestore rejects `undefined` fields; strip them before write. */
+// Firestore rejects undefined fields; strip them before write.
 function clean<T extends Record<string, any>>(obj: T): T {
   const out: any = {};
   for (const k of Object.keys(obj)) if (obj[k] !== undefined) out[k] = obj[k];
   return out as T;
 }
 
-/**
- * Wrap Firestore `onSnapshot` so subscription errors (security rules, lost
- * network, missing index) surface in the Expo console instead of failing
- * silently. Returns the unsubscribe.
- */
 function subscribe(
   ref: any,
   onNext: (snap: any) => void,
@@ -139,16 +114,11 @@ function subscribe(
   });
 }
 
-// ============================================================================
-// Public API
-// ============================================================================
-
 export const fs = {
   enabled(): boolean {
     return !!firebaseHandle();
   },
 
-  // -------------------- profile --------------------
   async getProfile(): Promise<Profile | null> {
     const h = firebaseHandle(); if (!h) return null;
     const snap = await getDoc(profileDoc(h.db, h.userId));
@@ -165,7 +135,6 @@ export const fs = {
     }, "profile");
   },
 
-  // -------------------- preferences --------------------
   async getPreferences(): Promise<Partial<Preferences> | null> {
     const h = firebaseHandle(); if (!h) return null;
     const snap = await getDoc(prefsDoc(h.db, h.userId));
@@ -182,7 +151,6 @@ export const fs = {
     }, "preferences");
   },
 
-  // -------------------- sound events --------------------
   async addEvent(e: Omit<SoundEvent, "id" | "timestamp">): Promise<SoundEvent> {
     const id = newId("e");
     const row: SoundEvent = { ...e, id, timestamp: Date.now() };
@@ -208,7 +176,6 @@ export const fs = {
     );
   },
 
-  // -------------------- actions --------------------
   async addAction(a: Omit<CapturedAction, "id" | "createdAt">): Promise<CapturedAction> {
     const id = newId("a");
     const row: CapturedAction = { ...a, id, createdAt: Date.now() };
@@ -237,7 +204,6 @@ export const fs = {
     );
   },
 
-  // -------------------- contacts --------------------
   async addContact(c: Omit<TrustedContact, "id">): Promise<TrustedContact> {
     const id = newId("c");
     const row: TrustedContact = { ...c, id };
@@ -255,8 +221,6 @@ export const fs = {
       contactsCol(h.db, h.userId),
       (snap) => {
         const rows = snap.docs.map((d: any) => d.data() as TrustedContact);
-        // Stable alpha ordering so the Trusted Circle doesn't shuffle between
-        // refreshes (Firestore returns unordered when no orderBy is set).
         rows.sort((a: TrustedContact, b: TrustedContact) => a.name.localeCompare(b.name));
         onChange(rows);
       },
@@ -264,7 +228,6 @@ export const fs = {
     );
   },
 
-  // -------------------- medications --------------------
   async addMedication(
     m: Omit<Medication, "id" | "active"> & { active?: boolean },
   ): Promise<Medication> {
@@ -296,8 +259,7 @@ export const fs = {
       medsCol(h.db, h.userId),
       (snap) => {
         const rows = snap.docs.map((d: any) => d.data() as Medication);
-        // Newest first, then stable by name. Avoids `orderBy("createdAt")`
-        // because older seed rows may not have `createdAt`.
+        // Older seed rows may not have `createdAt`, so sort manually.
         rows.sort((a: Medication, b: Medication) => {
           const at = a.createdAt ?? 0;
           const bt = b.createdAt ?? 0;
@@ -310,7 +272,6 @@ export const fs = {
     );
   },
 
-  // -------------------- medical visit log --------------------
   async addMedicalVisitLog(entry: Omit<MedicalVisitLogEntry, "id">): Promise<MedicalVisitLogEntry> {
     const id = newId("mv");
     const row: MedicalVisitLogEntry = {

@@ -1,16 +1,3 @@
-/**
- * Firebase / Firestore bootstrap for Agent ECHO.
- *
- * When the six required EXPO_PUBLIC_FIREBASE_* keys are present in .env.local,
- * the mobile app stores ALL state (events, actions, contacts, medications,
- * preferences, profile, medical visit log) in Firestore. Two devices that use
- * the same EXPO_PUBLIC_FIREBASE_USER_ID will then sync in real time via
- * Firestore onSnapshot listeners.
- *
- * If the config keys are missing, this module disables itself gracefully and
- * the rest of the app falls back to the legacy Express backend for storage.
- */
-
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import {
   initializeFirestore,
@@ -55,11 +42,6 @@ function readConfig(): FirebaseConfig | null {
   return c as FirebaseConfig;
 }
 
-/**
- * Synchronous probe used by the UI to decide whether to seed demo data.
- * Doesn't actually initialize Firebase — just checks if the six required
- * env keys look filled in. `initFirebase()` is still what does the real work.
- */
 export function firebaseConfigured(): boolean {
   return readConfig() !== null;
 }
@@ -95,10 +77,6 @@ async function resolveUserId(): Promise<string> {
   return fresh;
 }
 
-/**
- * Bootstraps Firebase exactly once and returns a handle the rest of the app
- * can use. Safe to call repeatedly — subsequent calls return the cached result.
- */
 export function initFirebase(): Promise<InitResult> {
   if (_initPromise) return _initPromise;
   _initPromise = (async () => {
@@ -106,28 +84,25 @@ export function initFirebase(): Promise<InitResult> {
     if (!cfg) {
       _enabled = false;
       if (__DEV__) {
-        console.log("[firebase] disabled — EXPO_PUBLIC_FIREBASE_* env vars missing, using local Express backend");
+        console.log("[firebase] disabled — env vars missing");
       }
       return { enabled: false, reason: "Firebase env vars missing" };
     }
     try {
       _app = getApps().length ? getApp() : initializeApp(cfg);
       _db = initializeFirestore(_app, {
-        // React Native's networking stack is happier with long polling than
-        // pure WebSockets, especially on Android emulator + restricted Wi-Fi.
+        // RN networking is more reliable with long polling than WebSockets.
         experimentalForceLongPolling: true,
       });
       _userId = await resolveUserId();
       _enabled = true;
       if (__DEV__) {
-        console.log(
-          `[firebase] enabled — project=${cfg.projectId} userId=${_userId}`,
-        );
+        console.log(`[firebase] enabled — project=${cfg.projectId} userId=${_userId}`);
       }
       return { enabled: true, db: _db, userId: _userId };
     } catch (err: any) {
       if (__DEV__) {
-        console.warn("[firebase] init failed, falling back to backend:", err?.message || err);
+        console.warn("[firebase] init failed:", err?.message || err);
       }
       _enabled = false;
       return { enabled: false, reason: err?.message || "init failed" };
@@ -136,7 +111,6 @@ export function initFirebase(): Promise<InitResult> {
   return _initPromise;
 }
 
-/** Returns `{ db, userId }` once Firebase is initialized, or `null` if it isn't. */
 export function firebaseHandle(): { db: Firestore; userId: string } | null {
   if (_enabled && _db && _userId) return { db: _db, userId: _userId };
   return null;

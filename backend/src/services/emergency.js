@@ -38,9 +38,6 @@ export async function sendEmergencyAlert({ level, trigger, contacts, location, m
       results.push({ name: c.name, phone: c.phone, error: err.message });
     }
   }
-  // If the caller passed an empty trusted circle (e.g. user deleted every
-  // contact), nothing was actually delivered — surface that honestly so the
-  // UI can warn them instead of saying "Sent to Trusted Circle."
   const successCount = results.filter((r) => r.sid && !r.error).length;
   return {
     sent: successCount > 0,
@@ -55,8 +52,7 @@ function buildBody({ level, trigger, location, message }) {
   lines.push(`[Agent ECHO ${levelLabel(level)}]`);
   if (message) lines.push(message);
   else lines.push(defaultMessage(trigger));
-  // Use `!= null` rather than a truthy check so that lat=0 or lng=0 (valid
-  // coordinates) still attach a live-location link to the SMS.
+  // Allow lat=0/lng=0 (valid coordinates) — checking `!= null` rather than truthy.
   if (location?.lat != null && location?.lng != null) {
     lines.push(`Live location: https://maps.google.com/?q=${location.lat},${location.lng}`);
   }

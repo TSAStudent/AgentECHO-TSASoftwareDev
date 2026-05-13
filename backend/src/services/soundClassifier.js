@@ -1,22 +1,7 @@
 import { getOpenAI, hasOpenAI } from "./openaiClient.js";
 
-/**
- * Real ambient sound classifier.
- *
- * Whisper is the best general-purpose audio model we have API access to; it
- * accepts m4a/webm/wav/mp3 and, when primed with the right prompt, will ALSO
- * emit bracketed descriptions of non-speech events like "[doorbell ringing]"
- * or "[dog barking]". We exploit that to cover both speech and ambient sound:
- *
- *   1. Transcribe the ~5s chunk with Whisper + a targeted prompt.
- *   2. Look for high-signal patterns in the transcript (user's name,
- *      emergency words, bracketed sound descriptions).
- *   3. Anything left ambiguous is sent to GPT-4o-mini as a text classifier
- *      that maps free-form descriptions onto our 16-label catalog.
- *
- * A deterministic mock is used when OpenAI isn't configured so the UI always
- * has something to render.
- */
+// Pipeline: Whisper transcript + bracketed sound tags → regex shortcuts →
+// GPT-4o-mini fallback classifier mapping free text onto the CATALOG below.
 
 const CATALOG = [
   { label: "smoke_alarm",      display: "Smoke / danger alarm", tier: "emergency", icon: "flame" },
@@ -48,7 +33,6 @@ const WHISPER_PROMPT = [
 ].join(" ");
 
 export async function classifySound(buffer, { userName, filename = "chunk.m4a" } = {}) {
-  // No audio? Nothing to do.
   if (!buffer || buffer.length < 256) return demoResult("silence", { demo: !hasOpenAI() });
   if (!hasOpenAI()) return demoBySize(buffer);
 
@@ -72,15 +56,13 @@ export async function classifySound(buffer, { userName, filename = "chunk.m4a" }
       return makeResult("silence", 0.92, { text });
     }
 
-    // ----- 2. Fast-path keyword/name match -----
     const keyword = keywordMatch(text, userName);
     if (keyword) return keyword;
 
-    // ----- 2b. Alarm / danger cues without brackets (Whisper often hallucinates short nonsense on tonal alarms) -----
+    // Whisper sometimes hallucinates short nonsense on tonal alarms.
     const alarmHint = transcriptAlarmHints(text);
     if (alarmHint) return alarmHint;
 
-    // ----- 3. LLM classification of the transcript -----
     const classification = await classifyTranscript(openai, text);
     return postCorrectAlarmMislabels(text, classification);
   } catch (err) {
@@ -89,15 +71,9 @@ export async function classifySound(buffer, { userName, filename = "chunk.m4a" }
   }
 }
 
-/**
- * Fast heuristics for the highest-signal, most time-critical events. We want
- * these to fire in <50ms without a second LLM round-trip: a "help" scream or
- * the user hearing their own name should light up the UI instantly.
- */
 function keywordMatch(text, userName) {
   const lower = text.toLowerCase();
 
-  // Bracketed descriptors from Whisper's own prompt response.
   const bracket = lower.match(/\[([^\]]+)\]/g);
   if (bracket) {
     for (const b of bracket) {
@@ -106,13 +82,11 @@ function keywordMatch(text, userName) {
     }
   }
 
-  // User's name — only a word-boundary match counts ("Sarah" yes, "Sarahn" no).
   if (userName) {
     const re = new RegExp(`\\b${escapeRegex(userName)}\\b`, "i");
     if (re.test(text)) return makeResult("name_called", 0.95, { text, via: "name" });
   }
 
-  // Urgent speech.
   if (/\b(help|fire|emergency|call\s*911|someone\s*help)\b/i.test(text)) {
     return makeResult("scream", 0.9, { text, via: "urgent_words" });
   }
@@ -137,7 +111,7 @@ function transcriptAlarmHints(text) {
     return makeResult("smoke_alarm", 0.82, { text: raw, via: "repeated_beep" });
   }
 
-  // Single-word / tiny hallucinations common when the mic hears repetitive alarm tones
+  // Rescue Whisper hallucinations triggered by repetitive alarm tones.
   if (raw.length <= 36 && /^\s*[A-Za-z]+\.?\s*$/.test(raw)) {
     const w = compact.split(/\s+/)[0] || "";
     const alarmGibberish = /^(cream|clean|green|theme|team|stream|dream|alarm)$/i;

@@ -4,12 +4,6 @@ import { getOpenAI, hasOpenAI } from "../services/openaiClient.js";
 
 const router = Router();
 
-/**
- * Conversational assistant that answers questions *about the user's own data* —
- * "What was I reminded to buy today?", "Did I miss any calls?", "What's on my
- * calendar this week?". It grounds GPT-4o-mini on the live JSON store so the
- * model can't hallucinate events that never happened.
- */
 router.post("/", async (req, res) => {
   try {
     const { message, history = [] } = req.body || {};

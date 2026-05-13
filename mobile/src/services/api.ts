@@ -6,8 +6,6 @@ const API_URL =
   "http://localhost:4000";
 
 async function jsonRequest<T>(path: string, init?: RequestInit, timeoutMs = 15_000): Promise<T> {
-  // Hand-rolled timeout so a dead backend doesn't hang the UI indefinitely —
-  // the mobile client gets a rejection within `timeoutMs` instead of spinning.
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
@@ -222,11 +220,6 @@ export const api = {
   },
 };
 
-/**
- * Build a multipart form that works on native (RN FormData accepts
- * `{ uri, name, type }`) and on the web (where we must fetch the blob URL
- * and append a real Blob).
- */
 async function buildAudioForm(
   uri: string,
   ext: string = "m4a",
@@ -236,7 +229,6 @@ async function buildAudioForm(
   const form = new FormData();
   const name = `${basename}.${ext}`;
 
-  // Web: uri is either a blob: URL from MediaRecorder or a data: URL.
   if (uri.startsWith("blob:") || uri.startsWith("data:") || uri.startsWith("http")) {
     try {
       const resp = await fetch(uri);
@@ -244,9 +236,7 @@ async function buildAudioForm(
       const file = typeof File !== "undefined" ? new File([blob], name, { type: mime }) : blob;
       form.append("audio", file as any, name);
       return form;
-    } catch {
-      // Fall through to the native style append as a last resort.
-    }
+    } catch {}
   }
 
   // @ts-ignore – RN FormData accepts { uri, name, type }

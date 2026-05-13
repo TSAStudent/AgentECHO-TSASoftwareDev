@@ -4,12 +4,6 @@ import { getOpenAI, hasOpenAI } from "../services/openaiClient.js";
 
 const router = Router();
 
-/**
- * Generates a morning / evening brief tailored to the user — "what you missed"
- * while ECHO was listening. This is the feature a judge remembers: it demos a
- * single-screen summary of the last 12 hours of ambient awareness, captured
- * actions, and medications due soon.
- */
 router.get("/", async (req, res) => {
   try {
     const kind = (req.query.kind === "evening" ? "evening" : "morning");

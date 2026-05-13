@@ -15,9 +15,7 @@ export default function SettingsScreen() {
   const nav = useNavigation();
   const { userName, setUserName, preferences, setPreference, isListening } = useEcho();
 
-  // Local draft + 600ms debounced commit so we don't hit the backend on every
-  // keystroke. Still syncs to context state so Conversation / Ambient pick up
-  // the new name as soon as the user stops typing.
+  // Debounce backend commits so we don't POST on every keystroke.
   const [draftName, setDraftName] = useState(userName);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { setDraftName(userName); }, [userName]);

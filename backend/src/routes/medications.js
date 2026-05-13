@@ -48,11 +48,7 @@ router.delete("/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-/**
- * Very forgiving schedule parser so a user can type natural instructions.
- * Recognizes "daily", "every morning", "every N hours", "twice a day", etc.
- * Falls back to 24h cadence.
- */
+// Parses "daily", "every N hours", "twice a day", etc. Falls back to 24h.
 function computeNextDose(schedule) {
   const s = String(schedule || "").toLowerCase();
   const hrs = (() => {

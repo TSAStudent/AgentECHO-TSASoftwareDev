@@ -33,7 +33,6 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 
-// Log every request at a glance — useful while demoing on stage.
 app.use((req, _res, next) => {
   if (req.path !== "/api/health") {
     console.log(`[${new Date().toISOString().slice(11, 19)}] ${req.method} ${req.path}`);
@@ -41,9 +40,6 @@ app.use((req, _res, next) => {
   next();
 });
 
-// =========================================================================
-// Health + hydration
-// =========================================================================
 app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
@@ -68,7 +64,6 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-// CRUD for every entity the app cares about (local JSON storage).
 app.use("/api/state",        stateRoutes);
 app.use("/api/actions",      actionsRoutes);
 app.use("/api/contacts",     contactsRoutes);
@@ -82,13 +77,7 @@ app.use("/api/chat",         chatRoutes);
 app.use("/api/brief",        briefRoutes);
 app.use("/api/maps",         mapsRoutes);
 
-// =========================================================================
-// AI + integration endpoints (stateless from the store's POV, but results
-// are opportunistically persisted where it makes sense).
-// =========================================================================
-
-// 1. Whisper transcription — saves the result into the transcripts store so
-//    the user's Conversation-mode history is queryable later.
+// Whisper transcription — persists the result to the transcripts store.
 app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   try {
     const buffer = req.file?.buffer;
@@ -118,8 +107,7 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   }
 });
 
-// 2. Smart action extraction — optionally persists extracted actions so the
-//    Home screen's "Captured for you" list picks them up without a second call.
+// Smart action extraction with optional persistence.
 app.post("/api/extract-actions", async (req, res) => {
   try {
     const { transcript, userName, context, persist: shouldPersist = true } = req.body || {};
@@ -158,10 +146,7 @@ app.post("/api/extract-actions", async (req, res) => {
   }
 });
 
-// 3. Environmental sound classifier — Whisper-powered, persists the top
-//    result as an event so it appears in the ambient timeline immediately.
-//    Pass `skipLow=true` to avoid flooding the event log with pure silence
-//    during a rolling ambient-listening session.
+// Environmental sound classifier. `skipLow=true` filters silence/speech.
 app.post("/api/classify-sound", upload.single("audio"), async (req, res) => {
   try {
     const userName = req.body?.userName || store.all().profile?.userName || null;
@@ -219,7 +204,6 @@ app.post("/api/summarize", async (req, res) => {
   }
 });
 
-// 5. ASL sign recognition (GPT-4o Vision substitute).
 app.post("/api/asl-recognize", async (req, res) => {
   try {
     const { imageBase64, priorSigns } = req.body || {};
@@ -232,7 +216,6 @@ app.post("/api/asl-recognize", async (req, res) => {
   }
 });
 
-// 6. Meeting vibe report — attaches back onto a meeting row if id supplied.
 app.post("/api/vibe-report", async (req, res) => {
   try {
     const { transcript, meetingId } = req.body || {};
@@ -246,7 +229,6 @@ app.post("/api/vibe-report", async (req, res) => {
   }
 });
 
-// 7. Text -> speech.
 app.post("/api/tts", async (req, res) => {
   try {
     const { text, voice, speed } = req.body || {};
@@ -259,9 +241,7 @@ app.post("/api/tts", async (req, res) => {
   }
 });
 
-// 8. Emergency SMS to trusted circle — if caller sends `contacts: undefined`
-//    we auto-fill from the stored Trusted Circle so the client can dispatch
-//    without shipping the circle in every request.
+// Falls back to stored Trusted Circle when `contacts` is omitted.
 app.post("/api/emergency", async (req, res) => {
   try {
     const body = req.body || {};
@@ -275,7 +255,7 @@ app.post("/api/emergency", async (req, res) => {
       location: body.location,
       message: body.message,
     });
-    // Always log the SOS as an event so the user has an audit trail.
+    // Audit-log every SOS dispatch.
     store.insert("events", {
       label: "sos_dispatched",
       display: `Emergency ${result.sent ? "sent" : "attempted"}`,
@@ -295,17 +275,11 @@ app.post("/api/emergency", async (req, res) => {
   }
 });
 
-// =========================================================================
-// Catch-all error handler — turn unhandled rejections into clean JSON 500s.
-// =========================================================================
 app.use((err, _req, res, _next) => {
   console.error("[unhandled]", err);
   res.status(500).json({ error: err.message || "Internal error" });
 });
 
-// =========================================================================
-// Background retention sweeper
-// =========================================================================
 const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 setInterval(() => {
   const days = store.all().preferences?.retentionDays || 0;
@@ -313,9 +287,6 @@ setInterval(() => {
   if (n > 0) console.log(`[retention] pruned ${n} record(s) older than ${days}d`);
 }, SWEEP_INTERVAL_MS).unref?.();
 
-// =========================================================================
-// Boot
-// =========================================================================
 const PORT = Number(process.env.BACKEND_PORT || 4000);
 app.listen(PORT, () => {
   console.log(`\n  Agent ECHO backend listening on http://localhost:${PORT}`);

@@ -1,16 +1,3 @@
-/**
- * Agent ECHO design system.
- *
- * Design goals:
- *   - Deaf-first accessibility: high contrast, very large touch targets,
- *     motion-rich visual feedback so missing audio is replaced by color,
- *     brightness, and haptics.
- *   - Premium "calm intelligence" feel: a near-black base with an aurora
- *     gradient accent (violet -> teal -> cyan) reserved for live events.
- *   - Severity encoded by color + glyph + motion so users who also have
- *     color-vision differences still get the signal.
- */
-
 export const palette = {
   ink: "#07080F",
   inkSoft: "#0D1020",
@@ -47,14 +34,11 @@ export const theme = {
     ...palette,
     bg: palette.ink,
     card: palette.surface,
-    /** Hairline UI chrome on dark surfaces */
     hairline: "rgba(245,247,255,0.08)",
     hairlineStrong: "rgba(245,247,255,0.12)",
-    /** Visible control rims (thicker borders) */
     controlStroke: "rgba(110,120,190,0.45)",
     controlStrokeMuted: "rgba(245,247,255,0.16)",
   },
-  /** Default stroke width for buttons / tiles */
   stroke: {
     control: 2,
   },
@@ -73,9 +57,7 @@ export const theme = {
     h3:      { fontSize: 17, lineHeight: 23, fontWeight: "600" as const },
     body:    { fontSize: 15, lineHeight: 22, fontWeight: "400" as const },
     bodySm:  { fontSize: 13, lineHeight: 19, fontWeight: "400" as const },
-    /** Chips / buttons */
     label:   { fontSize: 11, lineHeight: 14, fontWeight: "600" as const, letterSpacing: 0.55, textTransform: "uppercase" as const },
-    /** Section kickers — tight, not shouty */
     overline: { fontSize: 10, lineHeight: 13, fontWeight: "600" as const, letterSpacing: 0.85, textTransform: "uppercase" as const },
     mono:    { fontSize: 12, lineHeight: 16, fontFamily: "Menlo" as const },
   },

@@ -27,7 +27,6 @@ import { haptic, timeAgo } from "@/utils/format";
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const QUICK_TILE_HOVER_SPRING = { damping: 18, stiffness: 440, mass: 0.48 };
-/** Web hover scale — kept modest so inset slots absorb paint without touching neighbors. */
 const QUICK_TILE_HOVER_SCALE = 1.04;
 
 export default function HomeScreen() {
@@ -41,7 +40,6 @@ export default function HomeScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  /** Laptop / large tablet: room for larger tile copy and icons. */
   const isWideLayout = windowWidth >= 768;
   const tileRowBleedStyle = useMemo((): ViewStyle => {
     if (isWeb) {

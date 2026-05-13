@@ -2,24 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { Audio } from "expo-av";
 
-/**
- * Unified audio-recorder hook that works on iOS, Android, and Web.
- *
- * On native platforms we use expo-av's Audio.Recording with HIGH_QUALITY
- * presets (MP4/AAC m4a). On the web we use the browser's MediaRecorder API
- * directly because expo-av's web shim is flaky and produces files that
- * Whisper doesn't always accept.
- *
- * The hook exposes:
- *   - status:         "idle" | "preparing" | "recording" | "stopping" | "error"
- *   - durationMs:     how long the current recording has been going
- *   - levels:         rolling meter values 0..1 (best-effort — zero on web)
- *   - error:          last error message if any
- *   - start():        begin a new recording
- *   - stop():         stop and return { uri, mime, duration, ext }
- *   - cancel():       abandon the recording without returning anything
- */
-
 type Status = "idle" | "preparing" | "recording" | "stopping" | "error";
 
 export type RecordingResult = {
@@ -43,10 +25,8 @@ export function useAudioRecorder() {
   const startedAtRef = useRef<number>(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ---------- cleanup ----------
   useEffect(() => () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    // Best-effort teardown so a dev-reload leaves the mic free.
     (async () => {
       try { await recordingRef.current?.stopAndUnloadAsync(); } catch {}
       try { webRecorderRef.current?.stop(); } catch {}
@@ -76,7 +56,6 @@ export function useAudioRecorder() {
       if (Platform.OS === "web") {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         webStreamRef.current = stream;
-        // Prefer webm/opus — supported by Whisper and every modern browser.
         const mime = pickWebMime();
         webMimeRef.current = mime;
         const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
@@ -94,7 +73,6 @@ export function useAudioRecorder() {
         return;
       }
 
-      // ---- native (iOS / Android) ----
       const perm = await Audio.requestPermissionsAsync();
       if (!perm.granted) {
         setError("Microphone permission denied");
@@ -117,7 +95,7 @@ export function useAudioRecorder() {
       });
       rec.setOnRecordingStatusUpdate((s) => {
         if (typeof s.metering === "number") {
-          // Expo reports metering in dBFS (-160..0). Normalize to 0..1.
+          // Expo reports dBFS (-160..0); normalize to 0..1.
           const norm = Math.max(0, Math.min(1, (s.metering + 60) / 60));
           setLevel(norm);
         }
@@ -166,7 +144,6 @@ export function useAudioRecorder() {
       const duration = Date.now() - startedAtRef.current;
       setStatus("idle");
       setLevel(0);
-      // Native always produces m4a with the HIGH_QUALITY preset.
       return { uri, mime: "audio/mp4", ext: "m4a", duration };
     } catch (e: any) {
       setError(e?.message || "Could not stop recorder");

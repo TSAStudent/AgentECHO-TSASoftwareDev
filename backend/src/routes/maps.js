@@ -2,11 +2,7 @@ import { Router } from "express";
 
 const router = Router();
 
-/**
- * Server-side proxy for Google Maps APIs so we can keep the key out of the
- * mobile bundle AND let the ASL/Evacuation features reach the same endpoint
- * without duplicating HTTP code client-side.
- */
+// Google Maps proxy — keeps the API key out of the mobile bundle.
 router.post("/directions", async (req, res) => {
   try {
     const { origin, destination, mode = "walking" } = req.body || {};

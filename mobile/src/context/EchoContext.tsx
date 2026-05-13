@@ -52,7 +52,6 @@ export type Medication = {
   createdAt?: number;
 };
 
-/** Local-only history of Appointment companion visits (not synced to backend yet). */
 export type MedicalVisitLogEntry = {
   id: string;
   createdAt: number;
@@ -70,7 +69,6 @@ type Preferences = {
   autoTranscribe: boolean;
   allowCloudOffload: boolean;
   retentionDays: number;
-  /** Schedule OS notifications when a task has a future ISO `when` (calendar / reminder / etc.). */
   taskReminders: boolean;
 };
 
@@ -79,14 +77,12 @@ type EchoState = {
   nightMode: boolean;
   userName: string;
   soundEvents: SoundEvent[];
-  /** Immediate ambient classification banner (any tab). */
   ambientBanner: AmbientBanner | null;
   actions: CapturedAction[];
   trustedCircle: TrustedContact[];
   medications: Medication[];
   medicalVisitLog: MedicalVisitLogEntry[];
   preferences: Preferences;
-  // lifecycle
   hydrating: boolean;
   backendOnline: boolean;
   lastSyncedAt: number | null;
@@ -102,9 +98,8 @@ type EchoContextValue = EchoState & {
   clearEvents: () => void;
   dismissAmbientBanner: () => void;
 
-  /** Returns false if an identical pending task already exists (same type, title, detail, when). */
+  // Returns false if an identical pending task already exists.
   addAction: (a: Omit<CapturedAction, "id" | "createdAt">) => boolean;
-  /** Rows already saved by POST /api/extract-actions — merges into state without a second POST. */
   ingestPersistedActions: (items: ReadonlyArray<CapturedAction>) => number;
   toggleActionDone: (id: string) => void;
   removeAction: (id: string) => void;
@@ -116,7 +111,6 @@ type EchoContextValue = EchoState & {
   takeMedication: (id: string) => void;
   removeMedication: (id: string) => void;
 
-  /** Append one Appointment companion visit summary (persisted locally). */
   appendMedicalVisitLog: (entry: Omit<MedicalVisitLogEntry, "id">) => void;
 
   setPreference: <K extends keyof Preferences>(k: K, v: Preferences[K]) => void;
@@ -144,7 +138,7 @@ function coerceMedicalLogEntry(raw: any): MedicalVisitLogEntry | null {
   };
 }
 
-// -------- Fallback seeds (used only when backend is unreachable AND no cache) --------
+// Fallback seeds used only when the backend is unreachable and no cache exists.
 const seedEvents = (): SoundEvent[] => [
   { id: "e1", label: "doorbell",       display: "Doorbell",         tier: "medium", icon: "bell",       confidence: 0.94, timestamp: Date.now() - 1000 * 60 * 4,  room: "Front door",   direction: "N" },
   { id: "e2", label: "microwave_beep", display: "Microwave timer",  tier: "low",    icon: "microwave",  confidence: 0.88, timestamp: Date.now() - 1000 * 60 * 14, room: "Kitchen",      direction: "E" },
@@ -206,9 +200,7 @@ function mergePersistedInto(
 }
 
 export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // When the Firebase env keys are present we'll be replacing local state
-  // with the real Firestore snapshots within milliseconds, so don't show
-  // demo seed rows that would briefly flash and then disappear.
+  // Skip seeds when Firestore will hydrate state momentarily.
   const usingFirebase = firebaseConfigured();
   const [state, setState] = useState<EchoState>(() => ({
     isListening: true,
@@ -226,15 +218,13 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     lastSyncedAt: null,
   }));
 
-  // Keep the "latest state" available for async syncs without re-binding every
-  // mutator on every render. Without this, closure captures stale snapshots.
+  // Avoids stale closures inside async mutators.
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  /** After user touches Listen/Home toggle, don't let async hydrate overwrite `isListening` (fixes Listen showing PAUSED). */
+  // Once the user manually toggles listening, don't let hydrate overwrite it.
   const listeningUserOverrideRef = useRef(false);
 
-  // ---------- Hydration ----------
   const hydrate = useCallback(async () => {
     try {
       const snap = await api.state();
@@ -262,7 +252,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }));
       AsyncStorage.setItem(PREFS_CACHE_KEY, JSON.stringify(snap)).catch(() => {});
     } catch {
-      // Backend unreachable — fall back to the last cache, else seeds.
+      // Fall back to the last cache, else seeds.
       try {
         const raw = await AsyncStorage.getItem(PREFS_CACHE_KEY);
         if (raw) {
@@ -286,11 +276,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // ---------- Firebase bootstrap + live subscriptions ----------
-  // When EXPO_PUBLIC_FIREBASE_* env vars are set, all state flows through
-  // Firestore so two devices with the same EXPO_PUBLIC_FIREBASE_USER_ID share
-  // data in real time. When they're absent, we silently fall back to the
-  // legacy Express backend (`hydrate()` below).
   useEffect(() => {
     let unsubs: Array<() => void> = [];
     let cancelled = false;
@@ -298,7 +283,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const init = await initFirebase();
       if (cancelled) return;
       if (!init.enabled) {
-        // No Firebase config → use the Express backend exactly as before.
         hydrate();
         return;
       }
@@ -383,7 +367,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .catch(() => {});
   }, []);
 
-  // ---------- Listening / NightMode (persisted in preferences) ----------
   const setIsListening = useCallback((v: boolean) => {
     listeningUserOverrideRef.current = true;
     setState((p) => {
@@ -406,7 +389,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // ---------- Profile (userName) ----------
   const setUserName = useCallback((v: string) => {
     setState((p) => ({ ...p, userName: v }));
     if (fs.enabled()) {
@@ -416,7 +398,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // ---------- Sound events ----------
   const dismissAmbientBanner = useCallback(() => {
     setState((p) => ({ ...p, ambientBanner: null }));
   }, []);
@@ -432,8 +413,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...(banner ? { ambientBanner: banner } : {}),
     }));
     if (fs.enabled()) {
-      // Firestore subscription will replace the optimistic row with the
-      // canonical one (sorted by timestamp).
+      // Snapshot listener will replace the optimistic row with the canonical one.
       fs.addEvent({
         label: e.label, display: e.display, tier: e.tier, icon: e.icon,
         confidence: e.confidence, room: e.room, direction: e.direction as any,
@@ -444,7 +424,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
             soundEvents: p.soundEvents.map((x) => (x.id === optimisticId ? event : x)),
           }));
         })
-        .catch(() => { /* keep optimistic row */ });
+        .catch(() => {});
       return;
     }
     api.addEvent({
@@ -457,7 +437,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
           soundEvents: p.soundEvents.map((x) => (x.id === optimisticId ? { ...event } : x)),
         }));
       })
-      .catch(() => { /* offline — keep optimistic row */ });
+      .catch(() => {});
   }, []);
 
   const acknowledgeEvent = useCallback((id: string) => {
@@ -481,7 +461,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // ---------- Actions ----------
   const addAction: EchoContextValue["addAction"] = useCallback((a) => {
     if (hasDuplicatePending(stateRef.current.actions, a)) return false;
     const optimisticId = `a_local_${Date.now()}`;
@@ -536,8 +515,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       added = n;
       return n ? { ...p, actions: merged } : p;
     });
-    // Mirror server-persisted rows to Firestore so cross-device sync stays
-    // accurate. Snapshot listener will dedupe on id.
     if (fs.enabled()) {
       for (const row of rows) void fs.upsertAction(row);
     }
@@ -564,7 +541,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // ---------- Contacts (add is awaited so the UI can surface validation errors) ----------
   const addContact: EchoContextValue["addContact"] = useCallback(async (c) => {
     if (fs.enabled()) {
       try {
@@ -582,8 +558,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setState((p) => ({ ...p, trustedCircle: [...p.trustedCircle, contact] }));
       return { ok: true };
     } catch (err: any) {
-      // Fallback: add locally so the app is usable offline. Flag it as a local
-      // id so we know it hasn't synced yet — future work can retry.
+      // Offline: stash locally with a c_local_* id so it can be retried later.
       const optimistic: TrustedContact = { ...c, id: `c_local_${Date.now()}` };
       setState((p) => ({ ...p, trustedCircle: [...p.trustedCircle, optimistic] }));
       return { ok: false, error: err?.message || "Could not reach backend. Saved on this device." };
@@ -599,7 +574,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // ---------- Medications ----------
   const addMedication: EchoContextValue["addMedication"] = useCallback((m) => {
     const optimisticId = `m_local_${Date.now()}`;
     const optimistic: Medication = {
@@ -678,7 +652,6 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // ---------- Preferences ----------
   const setPreference: EchoContextValue["setPreference"] = useCallback((k, v) => {
     setState((p) => ({ ...p, preferences: { ...p.preferences, [k]: v } }));
     if (fs.enabled()) {
