@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/services/api";
+import { firebaseConfigured, initFirebase } from "@/services/firebase";
+import { fs } from "@/services/firestoreSync";
 import { onAmbientListeningEdge } from "@/utils/ambientSessionLifecycle";
 import { hasDuplicatePending } from "@/utils/actionDedupe";
 import { ambientBannerFromSound } from "@/utils/ambientSoundBanner";
@@ -204,15 +206,19 @@ function mergePersistedInto(
 }
 
 export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // When the Firebase env keys are present we'll be replacing local state
+  // with the real Firestore snapshots within milliseconds, so don't show
+  // demo seed rows that would briefly flash and then disappear.
+  const usingFirebase = firebaseConfigured();
   const [state, setState] = useState<EchoState>(() => ({
     isListening: true,
     nightMode: false,
     userName: "Sarah",
-    soundEvents: seedEvents(),
+    soundEvents: usingFirebase ? [] : seedEvents(),
     ambientBanner: null,
-    actions: seedActions(),
-    trustedCircle: seedContacts(),
-    medications: seedMedications(),
+    actions: usingFirebase ? [] : seedActions(),
+    trustedCircle: usingFirebase ? [] : seedContacts(),
+    medications: usingFirebase ? [] : seedMedications(),
     medicalVisitLog: [],
     preferences: defaultPrefs(),
     hydrating: true,
@@ -280,9 +286,69 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // ---------- Firebase bootstrap + live subscriptions ----------
+  // When EXPO_PUBLIC_FIREBASE_* env vars are set, all state flows through
+  // Firestore so two devices with the same EXPO_PUBLIC_FIREBASE_USER_ID share
+  // data in real time. When they're absent, we silently fall back to the
+  // legacy Express backend (`hydrate()` below).
   useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+    let unsubs: Array<() => void> = [];
+    let cancelled = false;
+    (async () => {
+      const init = await initFirebase();
+      if (cancelled) return;
+      if (!init.enabled) {
+        // No Firebase config → use the Express backend exactly as before.
+        hydrate();
+        return;
+      }
+
+      const u1 = fs.subscribeProfile((p) => {
+        if (!p) return;
+        setState((s) => ({ ...s, userName: p.userName || s.userName }));
+      });
+      const u2 = fs.subscribePreferences((p) => {
+        if (!p) return;
+        setState((s) => ({
+          ...s,
+          isListening: listeningUserOverrideRef.current ? s.isListening : Boolean(p.isListening ?? s.isListening),
+          nightMode:   Boolean(p.nightMode ?? s.nightMode),
+          preferences: {
+            haptics:           Boolean(p.haptics ?? s.preferences.haptics),
+            flashAlerts:       Boolean(p.flashAlerts ?? s.preferences.flashAlerts),
+            textSize:          (p.textSize as any) ?? s.preferences.textSize,
+            autoTranscribe:    Boolean(p.autoTranscribe ?? s.preferences.autoTranscribe),
+            allowCloudOffload: Boolean(p.allowCloudOffload ?? s.preferences.allowCloudOffload),
+            retentionDays:     Number(p.retentionDays ?? s.preferences.retentionDays) || 7,
+            taskReminders:     p.taskReminders !== false,
+          },
+        }));
+      });
+      const u3 = fs.subscribeEvents((events) => {
+        setState((s) => ({ ...s, soundEvents: events }));
+      });
+      const u4 = fs.subscribeActions((rows) => {
+        setState((s) => ({ ...s, actions: rows }));
+      });
+      const u5 = fs.subscribeContacts((rows) => {
+        setState((s) => ({ ...s, trustedCircle: rows }));
+      });
+      const u6 = fs.subscribeMedications((rows) => {
+        setState((s) => ({ ...s, medications: rows }));
+      });
+      const u7 = fs.subscribeMedicalVisitLog((rows) => {
+        setState((s) => ({ ...s, medicalVisitLog: rows.slice(0, MAX_MEDICAL_VISIT_LOG) }));
+      });
+      [u1, u2, u3, u4, u5, u6, u7].forEach((u) => { if (u) unsubs.push(u); });
+
+      setState((s) => ({ ...s, hydrating: false, backendOnline: true, lastSyncedAt: Date.now() }));
+    })();
+    return () => {
+      cancelled = true;
+      unsubs.forEach((u) => { try { u(); } catch {} });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     registerHapticsEnabled(() => stateRef.current.preferences.haptics);
@@ -324,18 +390,30 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (p.isListening !== v) void onAmbientListeningEdge(p.isListening, v);
       return { ...p, isListening: v };
     });
-    api.patchPreferences({ isListening: v }).catch(() => {});
+    if (fs.enabled()) {
+      void fs.setPreferences({ isListening: v });
+    } else {
+      api.patchPreferences({ isListening: v }).catch(() => {});
+    }
   }, []);
 
   const setNightMode = useCallback((v: boolean) => {
     setState((p) => ({ ...p, nightMode: v }));
-    api.patchPreferences({ nightMode: v }).catch(() => {});
+    if (fs.enabled()) {
+      void fs.setPreferences({ nightMode: v });
+    } else {
+      api.patchPreferences({ nightMode: v }).catch(() => {});
+    }
   }, []);
 
   // ---------- Profile (userName) ----------
   const setUserName = useCallback((v: string) => {
     setState((p) => ({ ...p, userName: v }));
-    api.patchProfile({ userName: v }).catch(() => {});
+    if (fs.enabled()) {
+      void fs.setProfile({ userName: v });
+    } else {
+      api.patchProfile({ userName: v }).catch(() => {});
+    }
   }, []);
 
   // ---------- Sound events ----------
@@ -345,18 +423,30 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const pushSoundEvent: EchoContextValue["pushSoundEvent"] = useCallback((e) => {
     feedbackForSoundEventTier(e.tier);
-    const optimistic: SoundEvent = {
-      ...e,
-      id: `e_local_${Date.now()}`,
-      timestamp: Date.now(),
-    };
-    const banner = ambientBannerFromSound(e, optimistic.id);
+    const optimisticId = `e_local_${Date.now()}`;
+    const optimistic: SoundEvent = { ...e, id: optimisticId, timestamp: Date.now() };
+    const banner = ambientBannerFromSound(e, optimisticId);
     setState((p) => ({
       ...p,
       soundEvents: [optimistic, ...p.soundEvents].slice(0, 200),
       ...(banner ? { ambientBanner: banner } : {}),
     }));
-    // Reconcile with server id on success.
+    if (fs.enabled()) {
+      // Firestore subscription will replace the optimistic row with the
+      // canonical one (sorted by timestamp).
+      fs.addEvent({
+        label: e.label, display: e.display, tier: e.tier, icon: e.icon,
+        confidence: e.confidence, room: e.room, direction: e.direction as any,
+      })
+        .then((event) => {
+          setState((p) => ({
+            ...p,
+            soundEvents: p.soundEvents.map((x) => (x.id === optimisticId ? event : x)),
+          }));
+        })
+        .catch(() => { /* keep optimistic row */ });
+      return;
+    }
     api.addEvent({
       label: e.label, display: e.display, tier: e.tier, icon: e.icon,
       confidence: e.confidence, room: e.room, direction: e.direction as any,
@@ -364,7 +454,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then(({ event }) => {
         setState((p) => ({
           ...p,
-          soundEvents: p.soundEvents.map((x) => (x.id === optimistic.id ? { ...event } : x)),
+          soundEvents: p.soundEvents.map((x) => (x.id === optimisticId ? { ...event } : x)),
         }));
       })
       .catch(() => { /* offline — keep optimistic row */ });
@@ -375,23 +465,45 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...p,
       soundEvents: p.soundEvents.map((e) => (e.id === id ? { ...e, acknowledged: true } : e)),
     }));
-    api.ackEvent(id).catch(() => {});
+    if (fs.enabled()) {
+      void fs.ackEvent(id);
+    } else {
+      api.ackEvent(id).catch(() => {});
+    }
   }, []);
 
   const clearEvents = useCallback(() => {
     setState((p) => ({ ...p, soundEvents: [], ambientBanner: null }));
-    api.clearEvents().catch(() => {});
+    if (fs.enabled()) {
+      void fs.clearEvents();
+    } else {
+      api.clearEvents().catch(() => {});
+    }
   }, []);
 
   // ---------- Actions ----------
   const addAction: EchoContextValue["addAction"] = useCallback((a) => {
     if (hasDuplicatePending(stateRef.current.actions, a)) return false;
-    const optimistic: CapturedAction = { ...a, id: `a_local_${Date.now()}`, createdAt: Date.now() };
+    const optimisticId = `a_local_${Date.now()}`;
+    const optimistic: CapturedAction = { ...a, id: optimisticId, createdAt: Date.now() };
     setState((p) => ({ ...p, actions: [optimistic, ...p.actions] }));
+    if (fs.enabled()) {
+      fs.addAction(a)
+        .then((row) => {
+          setState((p) => ({
+            ...p,
+            actions: p.actions.map((x) => (x.id === optimisticId ? row : x)),
+          }));
+        })
+        .catch(() => {
+          setState((p) => ({ ...p, actions: p.actions.filter((x) => x.id !== optimisticId) }));
+        });
+      return true;
+    }
     api.addAction(a)
       .then((res) => {
         if (res?.duplicate) {
-          setState((p) => ({ ...p, actions: p.actions.filter((x) => x.id !== optimistic.id) }));
+          setState((p) => ({ ...p, actions: p.actions.filter((x) => x.id !== optimisticId) }));
           api.listActions()
             .then(({ actions: list }) => {
               const rows = (list || []).map(coerceCapturedAction).filter(Boolean) as CapturedAction[];
@@ -402,13 +514,13 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
         if (!res?.action) {
-          setState((p) => ({ ...p, actions: p.actions.filter((x) => x.id !== optimistic.id) }));
+          setState((p) => ({ ...p, actions: p.actions.filter((x) => x.id !== optimisticId) }));
           return;
         }
         const merged = coerceCapturedAction(res.action);
         setState((p) => ({
           ...p,
-          actions: p.actions.map((x) => (x.id === optimistic.id ? merged || res.action! : x)),
+          actions: p.actions.map((x) => (x.id === optimisticId ? merged || res.action! : x)),
         }));
       })
       .catch(() => {});
@@ -424,6 +536,11 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       added = n;
       return n ? { ...p, actions: merged } : p;
     });
+    // Mirror server-persisted rows to Firestore so cross-device sync stays
+    // accurate. Snapshot listener will dedupe on id.
+    if (fs.enabled()) {
+      for (const row of rows) void fs.upsertAction(row);
+    }
     return added;
   }, []);
 
@@ -431,16 +548,35 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const existing = stateRef.current.actions.find((a) => a.id === id);
     const next = !existing?.done;
     setState((p) => ({ ...p, actions: p.actions.map((a) => (a.id === id ? { ...a, done: next } : a)) }));
-    api.patchAction(id, { done: next }).catch(() => {});
+    if (fs.enabled()) {
+      void fs.patchAction(id, { done: next });
+    } else {
+      api.patchAction(id, { done: next }).catch(() => {});
+    }
   }, []);
 
   const removeAction = useCallback((id: string) => {
     setState((p) => ({ ...p, actions: p.actions.filter((a) => a.id !== id) }));
-    api.deleteAction(id).catch(() => {});
+    if (fs.enabled()) {
+      void fs.deleteAction(id);
+    } else {
+      api.deleteAction(id).catch(() => {});
+    }
   }, []);
 
   // ---------- Contacts (add is awaited so the UI can surface validation errors) ----------
   const addContact: EchoContextValue["addContact"] = useCallback(async (c) => {
+    if (fs.enabled()) {
+      try {
+        const contact = await fs.addContact(c);
+        setState((p) => ({ ...p, trustedCircle: [...p.trustedCircle, contact] }));
+        return { ok: true };
+      } catch (err: any) {
+        const optimistic: TrustedContact = { ...c, id: `c_local_${Date.now()}` };
+        setState((p) => ({ ...p, trustedCircle: [...p.trustedCircle, optimistic] }));
+        return { ok: false, error: err?.message || "Could not reach Firestore. Saved on this device." };
+      }
+    }
     try {
       const { contact } = await api.addContact(c);
       setState((p) => ({ ...p, trustedCircle: [...p.trustedCircle, contact] }));
@@ -456,22 +592,38 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removeContact = useCallback((id: string) => {
     setState((p) => ({ ...p, trustedCircle: p.trustedCircle.filter((c) => c.id !== id) }));
-    api.deleteContact(id).catch(() => {});
+    if (fs.enabled()) {
+      void fs.deleteContact(id);
+    } else {
+      api.deleteContact(id).catch(() => {});
+    }
   }, []);
 
   // ---------- Medications ----------
   const addMedication: EchoContextValue["addMedication"] = useCallback((m) => {
+    const optimisticId = `m_local_${Date.now()}`;
     const optimistic: Medication = {
-      id: `m_local_${Date.now()}`, name: m.name, schedule: m.schedule,
+      id: optimisticId, name: m.name, schedule: m.schedule,
       nextDose: m.nextDose ?? null, prescribedBy: m.prescribedBy ?? null,
       active: m.active ?? true,
     };
     setState((p) => ({ ...p, medications: [...p.medications, optimistic] }));
+    if (fs.enabled()) {
+      fs.addMedication(m as any)
+        .then((medication) => {
+          setState((p) => ({
+            ...p,
+            medications: p.medications.map((x) => (x.id === optimisticId ? medication : x)),
+          }));
+        })
+        .catch(() => {});
+      return;
+    }
     api.addMedication(m as any)
       .then(({ medication }) => {
         setState((p) => ({
           ...p,
-          medications: p.medications.map((x) => (x.id === optimistic.id ? medication : x)),
+          medications: p.medications.map((x) => (x.id === optimisticId ? medication : x)),
         }));
       })
       .catch(() => {});
@@ -482,6 +634,10 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...p,
       medications: p.medications.map((m) => (m.id === id ? { ...m, lastTakenAt: Date.now() } : m)),
     }));
+    if (fs.enabled()) {
+      void fs.takeMedication(id);
+      return;
+    }
     api.takeMedication(id)
       .then(({ medication }) => {
         setState((p) => ({
@@ -494,7 +650,11 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removeMedication = useCallback((id: string) => {
     setState((p) => ({ ...p, medications: p.medications.filter((m) => m.id !== id) }));
-    api.deleteMedication(id).catch(() => {});
+    if (fs.enabled()) {
+      void fs.deleteMedication(id);
+    } else {
+      api.deleteMedication(id).catch(() => {});
+    }
   }, []);
 
   const appendMedicalVisitLog = useCallback((entry: Omit<MedicalVisitLogEntry, "id">) => {
@@ -508,15 +668,24 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     setState((p) => {
       const next = [row, ...p.medicalVisitLog].slice(0, MAX_MEDICAL_VISIT_LOG);
-      AsyncStorage.setItem(MEDICAL_LOG_KEY, JSON.stringify(next)).catch(() => {});
+      if (!fs.enabled()) {
+        AsyncStorage.setItem(MEDICAL_LOG_KEY, JSON.stringify(next)).catch(() => {});
+      }
       return { ...p, medicalVisitLog: next };
     });
+    if (fs.enabled()) {
+      void fs.addMedicalVisitLog(entry);
+    }
   }, []);
 
   // ---------- Preferences ----------
   const setPreference: EchoContextValue["setPreference"] = useCallback((k, v) => {
     setState((p) => ({ ...p, preferences: { ...p.preferences, [k]: v } }));
-    api.patchPreferences({ [k]: v } as any).catch(() => {});
+    if (fs.enabled()) {
+      void fs.setPreferences({ [k]: v } as any);
+    } else {
+      api.patchPreferences({ [k]: v } as any).catch(() => {});
+    }
   }, []);
 
   const value = useMemo<EchoContextValue>(
