@@ -17,6 +17,7 @@ router.patch("/", (req, res) => {
     "allowCloudOffload",
     "isListening",
     "nightMode",
+    "taskReminders",
   ];
   for (const k of allow) if (k in patch) safe[k] = Boolean(patch[k]);
   if ("textSize" in patch && ["regular", "large", "xl"].includes(patch.textSize)) safe.textSize = patch.textSize;

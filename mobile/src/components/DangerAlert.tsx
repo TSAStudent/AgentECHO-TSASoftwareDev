@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { theme } from "@/theme";
 import { haptic } from "@/utils/format";
+import { vibrateAlertPattern } from "@/utils/alertFeedback";
 
 export type DangerAlertPayload = {
   label: string;
@@ -62,6 +63,7 @@ export const DangerAlert: React.FC<Props> = ({ alert, onDismiss, onCallSos }) =>
       pulse.setValue(0);
       return;
     }
+    vibrateAlertPattern("heavy");
     haptic.heavy();
     const burst = setTimeout(() => haptic.heavy(), 220);
     const burst2 = setTimeout(() => haptic.warning(), 460);

@@ -76,6 +76,7 @@ export type PreferencesDTO = {
   retentionDays: number;
   isListening: boolean;
   nightMode: boolean;
+  taskReminders?: boolean;
 };
 
 export type ProfileDTO = { userName: string; createdAt?: number };

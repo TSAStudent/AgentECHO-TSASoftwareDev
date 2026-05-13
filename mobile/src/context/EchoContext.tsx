@@ -5,6 +5,9 @@ import { onAmbientListeningEdge } from "@/utils/ambientSessionLifecycle";
 import { hasDuplicatePending } from "@/utils/actionDedupe";
 import { ambientBannerFromSound } from "@/utils/ambientSoundBanner";
 import type { AmbientBanner } from "@/utils/ambientSoundBanner";
+import { registerHapticsEnabled } from "@/utils/feedbackPrefs";
+import { feedbackForSoundEventTier } from "@/utils/alertFeedback";
+import { syncTaskRemindersFromActions } from "@/notifications/taskReminders";
 
 export type { AmbientBanner } from "@/utils/ambientSoundBanner";
 
@@ -65,6 +68,8 @@ type Preferences = {
   autoTranscribe: boolean;
   allowCloudOffload: boolean;
   retentionDays: number;
+  /** Schedule OS notifications when a task has a future ISO `when` (calendar / reminder / etc.). */
+  taskReminders: boolean;
 };
 
 type EchoState = {
@@ -163,6 +168,7 @@ const defaultPrefs = (): Preferences => ({
   autoTranscribe: true,
   allowCloudOffload: true,
   retentionDays: 7,
+  taskReminders: true,
 });
 
 function coerceCapturedAction(raw: any): CapturedAction | null {
@@ -242,6 +248,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
           autoTranscribe:    Boolean(snap.preferences?.autoTranscribe),
           allowCloudOffload: Boolean(snap.preferences?.allowCloudOffload),
           retentionDays:     Number(snap.preferences?.retentionDays) || 7,
+          taskReminders:     snap.preferences?.taskReminders !== false,
         },
         hydrating: false,
         backendOnline: true,
@@ -276,6 +283,22 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    registerHapticsEnabled(() => stateRef.current.preferences.haptics);
+  }, []);
+
+  const reminderSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (state.hydrating) return;
+    if (reminderSyncTimerRef.current) clearTimeout(reminderSyncTimerRef.current);
+    reminderSyncTimerRef.current = setTimeout(() => {
+      void syncTaskRemindersFromActions(state.actions, state.preferences.taskReminders);
+    }, 500);
+    return () => {
+      if (reminderSyncTimerRef.current) clearTimeout(reminderSyncTimerRef.current);
+    };
+  }, [state.actions, state.hydrating, state.preferences.taskReminders]);
 
   useEffect(() => {
     AsyncStorage.getItem(MEDICAL_LOG_KEY)
@@ -321,6 +344,7 @@ export const EchoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const pushSoundEvent: EchoContextValue["pushSoundEvent"] = useCallback((e) => {
+    feedbackForSoundEventTier(e.tier);
     const optimistic: SoundEvent = {
       ...e,
       id: `e_local_${Date.now()}`,

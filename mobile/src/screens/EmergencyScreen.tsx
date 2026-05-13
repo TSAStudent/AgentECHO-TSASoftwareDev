@@ -1,5 +1,17 @@
 import React, { useRef, useState } from "react";
-import { Animated, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  Animated,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -22,6 +34,7 @@ export default function EmergencyScreen() {
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [sosActionsOpen, setSosActionsOpen] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", relation: "" });
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -31,19 +44,59 @@ export default function EmergencyScreen() {
     setPressing(true);
     Animated.timing(ringScale, { toValue: 1.25, duration: 1500, useNativeDriver: true }).start();
     pressTimer.current = setTimeout(() => {
-      fireSos();
+      pressTimer.current = null;
+      openSosActionSheet();
     }, 1500);
   };
   const cancelHold = () => {
     setPressing(false);
     Animated.timing(ringScale, { toValue: 1, duration: 250, useNativeDriver: true }).start();
-    if (pressTimer.current) clearTimeout(pressTimer.current);
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
   };
-  const fireSos = async () => {
+
+  const openSosActionSheet = () => {
+    haptic.warning();
+    setPressing(false);
+    Animated.timing(ringScale, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    setSosActionsOpen(true);
+  };
+
+  const dialPhone = async (label: string, raw: string) => {
+    const cleaned = String(raw).replace(/[^\d+#*;+]/g, "").trim();
+    if (!cleaned) {
+      Alert.alert("No number", `${label} does not have a dialable number.`);
+      return;
+    }
+    const url = `tel:${cleaned}`;
+    try {
+      if (Platform.OS !== "web" && (await Linking.canOpenURL(url))) {
+        await Linking.openURL(url);
+      } else if (Platform.OS === "web") {
+        Alert.alert(
+          "Call from your phone",
+          `Number to dial: ${cleaned}\n\nOn a real device, ECHO opens the phone app here.`,
+        );
+      } else {
+        await Linking.openURL(url);
+      }
+    } catch {
+      Alert.alert("Could not start call", `Try calling ${cleaned} from your phone app.`);
+    }
+    setSosActionsOpen(false);
+  };
+
+  /** Same as the former hold-to-send: SMS / notify Trusted Circle via backend. */
+  const dispatchTrustedCircle = async () => {
+    if (trustedCircle.length === 0) {
+      Alert.alert("No contacts", "Add someone to Trusted Circle first, then try again.");
+      return;
+    }
+    setSosActionsOpen(false);
     setStatus("Locating you…");
     haptic.error();
-    // Attempt to grab the user's real location. If permission is denied, we
-    // still dispatch the SOS — just without live coordinates.
     let location: { lat: number; lng: number; accuracy?: number } | undefined;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -52,7 +105,7 @@ export default function EmergencyScreen() {
         location = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy ?? undefined };
       }
     } catch {
-      // Non-fatal: send without location.
+      /* send without location */
     }
 
     setStatus("Dispatching…");
@@ -72,8 +125,6 @@ export default function EmergencyScreen() {
       }
     } catch {
       setStatus("Could not reach backend. Showing a demo preview.");
-    } finally {
-      cancelHold();
     }
   };
 
@@ -123,7 +174,7 @@ export default function EmergencyScreen() {
               <MaterialCommunityIcons name="shield-alert" size={60} color="#fff" />
               <Text style={styles.sosTitle}>{pressing ? "HOLD…" : "HOLD FOR SOS"}</Text>
               <Text style={styles.sosSub}>
-                {pressing ? "Dispatching in 1.5s" : "1.5-second safety lock"}
+                {pressing ? "Opens emergency options in 1.5s" : "Hold 1.5s"}
               </Text>
             </View>
           </HoverGrowPressable>
@@ -202,6 +253,82 @@ export default function EmergencyScreen() {
           </Text>
         </View>
       </GlassCard>
+
+      {/* SOS action sheet (after hold completes) */}
+      <Modal visible={sosActionsOpen} transparent animationType="fade" onRequestClose={() => setSosActionsOpen(false)}>
+        <Pressable style={styles.modalBg} onPress={() => setSosActionsOpen(false)}>
+          <Pressable style={styles.sosSheet} onPress={() => {}}>
+            <Text style={{ ...theme.type.label, color: theme.colors.danger }}>SOS</Text>
+            <Text style={{ ...theme.type.title, color: theme.colors.text, marginTop: 6 }}>What do you need?</Text>
+            <Text style={{ ...theme.type.bodySm, color: theme.colors.textDim, marginTop: 8, marginBottom: 4 }}>
+              Pick a number or alert your circle. Location is only used if you alert Trusted Circle.
+            </Text>
+
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              <HoverGrowPressable
+                onPress={() => { haptic.medium(); void dialPhone("911", "911"); }}
+                style={[styles.sosSheetBtn, styles.sosSheetBtn911]}
+              >
+                <Ionicons name="call" size={22} color="#fff" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.sosSheetBtnTitle}>Call 911</Text>
+                  <Text style={styles.sosSheetBtnSub}>Opens the dialer (US emergency)</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+              </HoverGrowPressable>
+
+              <HoverGrowPressable
+                onPress={() => { haptic.medium(); void dispatchTrustedCircle(); }}
+                style={[
+                  styles.sosSheetBtn,
+                  { marginTop: 10, opacity: trustedCircle.length ? 1 : 0.45 },
+                ]}
+                disabled={trustedCircle.length === 0}
+              >
+                <MaterialCommunityIcons name="message-text" size={22} color="#07080F" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.sosSheetBtnTitle, { color: "#07080F" }]}>Alert Trusted Circle</Text>
+                  <Text style={[styles.sosSheetBtnSub, { color: "rgba(7,8,15,0.65)" }]}>
+                    {trustedCircle.length
+                      ? "Sends SOS through ECHO with location if allowed"
+                      : "Add a contact on this screen first"}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="rgba(7,8,15,0.45)" />
+              </HoverGrowPressable>
+
+              {trustedCircle.length > 0 ? (
+                <View style={{ marginTop: 18 }}>
+                  <Text style={{ ...theme.type.overline, color: theme.colors.textMute, marginBottom: 8 }}>Call a contact</Text>
+                  {trustedCircle.map((c) => (
+                    <HoverGrowPressable
+                      key={c.id}
+                      onPress={() => { haptic.light(); void dialPhone(c.name, c.phone); }}
+                      style={[styles.sosSheetBtn, styles.sosSheetBtnGhost, { marginTop: 8 }]}
+                    >
+                      <View style={styles.sosMiniAvatar}>
+                        <Text style={styles.sosMiniAvatarText}>{c.name[0]?.toUpperCase() || "?"}</Text>
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={[styles.sosSheetBtnTitle, { color: theme.colors.text }]}>{c.name}</Text>
+                        <Text style={[styles.sosSheetBtnSub, { color: theme.colors.textDim }]}>{c.phone}</Text>
+                      </View>
+                      <Ionicons name="call-outline" size={22} color={theme.colors.accent} />
+                    </HoverGrowPressable>
+                  ))}
+                </View>
+              ) : null}
+            </ScrollView>
+
+            <HoverGrowPressable
+              onPress={() => { haptic.light(); setSosActionsOpen(false); }}
+              style={[styles.sosSheetBtn, styles.sosSheetBtnGhost, { marginTop: 16, justifyContent: "center" }]}
+            >
+              <Text style={{ ...theme.type.label, color: theme.colors.textDim }}>CLOSE</Text>
+            </HoverGrowPressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Add-contact modal */}
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
@@ -317,6 +444,46 @@ const styles = StyleSheet.create({
   },
   mBtnGhost: {
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1, borderColor: theme.colors.outlineSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineSoft,
   },
+  sosSheet: {
+    width: "100%",
+    maxWidth: 400,
+    maxHeight: "88%",
+    backgroundColor: "#121530",
+    borderRadius: theme.radius.xl,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineSoft,
+  },
+  sosSheetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.accent,
+  },
+  sosSheetBtn911: {
+    backgroundColor: theme.colors.danger,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  sosSheetBtnGhost: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: theme.colors.outlineSoft,
+  },
+  sosSheetBtnTitle: { ...theme.type.h3, color: "#fff", fontSize: 16 },
+  sosSheetBtnSub: { ...theme.type.bodySm, color: "rgba(255,255,255,0.75)", marginTop: 2 },
+  sosMiniAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sosMiniAvatarText: { ...theme.type.h3, color: "#07080F" },
 });

@@ -27,7 +27,6 @@ import {
 const DIRECTIONS: Array<SoundEvent["direction"]> = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 const CHUNK_MS = 5_000; // rolling chunk length
 const PAUSE_BETWEEN_MS = 400; // tiny gap so the mic doesn't overlap
-const HIGH_TIERS = new Set(["high", "emergency"]);
 
 /**
  * Ambient listening that actually captures audio from the device microphone,
@@ -122,8 +121,6 @@ export default function AmbientScreen() {
               room: null,
               direction: dir,
             });
-            if (HIGH_TIERS.has(result.top.tier)) haptic.warning();
-            else haptic.light();
           }
 
           // Extract as soon as transcript crosses the bar — no wait for recording to stop (each chunk may still add text).

@@ -72,6 +72,7 @@ export default function SettingsScreen() {
       <SectionHeader eyebrow="Notifications" title="How ECHO gets your attention" />
       <GlassCard>
         <Toggle label="Haptic feedback"   value={preferences.haptics}       onChange={(v) => setPreference("haptics", v)} />
+        <Toggle label="Task time alerts"  value={preferences.taskReminders} onChange={(v) => setPreference("taskReminders", v)} />
         <Toggle label="Flash alerts"      value={preferences.flashAlerts}   onChange={(v) => setPreference("flashAlerts", v)} />
         <Toggle label="Auto-transcribe"   value={preferences.autoTranscribe} onChange={(v) => setPreference("autoTranscribe", v)} />
       </GlassCard>

@@ -27,6 +27,7 @@ const DEFAULTS = () => ({
     retentionDays: 7,
     isListening: true,
     nightMode: false,
+    taskReminders: true,
   },
   actions: [
     {

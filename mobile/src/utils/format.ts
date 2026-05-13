@@ -14,6 +14,8 @@ export function clock(ts: number): string {
   return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+import { isHapticsEnabled } from "@/utils/feedbackPrefs";
+
 export function formatDurationMs(ms: number): string {
   const m = Math.max(0, Math.floor(ms / 60000));
   if (m < 1) return "< 1 min";
@@ -25,36 +27,42 @@ export function formatDurationMs(ms: number): string {
 
 export const haptic = {
   light: async () => {
+    if (!isHapticsEnabled()) return;
     try {
       const H = await import("expo-haptics");
       await H.impactAsync(H.ImpactFeedbackStyle.Light);
     } catch {}
   },
   medium: async () => {
+    if (!isHapticsEnabled()) return;
     try {
       const H = await import("expo-haptics");
       await H.impactAsync(H.ImpactFeedbackStyle.Medium);
     } catch {}
   },
   heavy: async () => {
+    if (!isHapticsEnabled()) return;
     try {
       const H = await import("expo-haptics");
       await H.impactAsync(H.ImpactFeedbackStyle.Heavy);
     } catch {}
   },
   success: async () => {
+    if (!isHapticsEnabled()) return;
     try {
       const H = await import("expo-haptics");
       await H.notificationAsync(H.NotificationFeedbackType.Success);
     } catch {}
   },
   warning: async () => {
+    if (!isHapticsEnabled()) return;
     try {
       const H = await import("expo-haptics");
       await H.notificationAsync(H.NotificationFeedbackType.Warning);
     } catch {}
   },
   error: async () => {
+    if (!isHapticsEnabled()) return;
     try {
       const H = await import("expo-haptics");
       await H.notificationAsync(H.NotificationFeedbackType.Error);

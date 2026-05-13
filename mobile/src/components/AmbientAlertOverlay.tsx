@@ -8,6 +8,7 @@ import { theme } from "@/theme";
 import { useEcho } from "@/context/EchoContext";
 import { navigateToSafetyTab } from "@/navigation/rootNavigationRef";
 import { haptic } from "@/utils/format";
+import { feedbackForAmbientBanner } from "@/utils/alertFeedback";
 
 const INFO_AUTO_DISMISS_MS = 12_000;
 
@@ -18,15 +19,20 @@ export function AmbientAlertOverlay() {
   const insets = useSafeAreaInsets();
   const { ambientBanner, dismissAmbientBanner } = useEcho();
   const lastSafetyPulse = useRef<string | null>(null);
+  const lastInfoPulse = useRef<string | null>(null);
   const infoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!ambientBanner) return;
     if (ambientBanner.kind === "safety" && lastSafetyPulse.current !== ambientBanner.id) {
       lastSafetyPulse.current = ambientBanner.id;
-      haptic.warning();
+      feedbackForAmbientBanner("safety");
     }
     if (ambientBanner.kind === "info") {
+      if (lastInfoPulse.current !== ambientBanner.id) {
+        lastInfoPulse.current = ambientBanner.id;
+        feedbackForAmbientBanner("info");
+      }
       if (infoTimerRef.current) clearTimeout(infoTimerRef.current);
       infoTimerRef.current = setTimeout(() => dismissAmbientBanner(), INFO_AUTO_DISMISS_MS);
       return () => {
